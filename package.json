@@ -44,7 +44,11 @@
   "sideEffects": [
     "*.css"
   ],
+  "publishConfig": {
+    "tag": "alpha"
+  },
   "scripts": {
+    "prepublishOnly": "npm run coverage && npm run format:check",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",

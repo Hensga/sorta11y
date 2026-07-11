@@ -3,6 +3,7 @@
 > Accessible, zero-dependency vanilla-JS sortable list — keyboard reordering **and** pointer drag, with screen-reader announcements. No framework. No jQuery. No build step.
 
 ![status](https://img.shields.io/badge/status-pre--release%20alpha-orange)
+[![CI](https://github.com/Hensga/sorta11y/actions/workflows/ci.yml/badge.svg)](https://github.com/Hensga/sorta11y/actions/workflows/ci.yml)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-zero-brightgreen)
 
@@ -17,6 +18,36 @@ existing pages.
 > and unit/DOM-tested (Vitest + jsdom); axe-core runs in the test suite. Manual
 > screen-reader verification is still pending — see
 > [Known limitations](#known-limitations).
+
+## Install
+
+sorta11y is a pre-release — install via the `alpha` tag (or pin the exact
+version):
+
+```bash
+npm install sorta11y@alpha
+```
+
+```js
+import Sorta11y from "sorta11y";
+import "sorta11y/style.css";
+
+Sorta11y.create(document.querySelector("#my-list"), { handle: ".drag-handle" });
+```
+
+Or skip the build step entirely — the library is one hand-written UMD file
+that works straight from a CDN:
+
+```html
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.js"></script>
+```
+
+Optional locale files live under `sorta11y/locales/*` — see
+[Internationalisation](#internationalisation).
 
 ## Why
 
@@ -120,7 +151,7 @@ item anyway (`touch-action: none` on every item) — only advisable for short
 lists that never need to scroll. Toggles live via
 `list.option("dragOnItemTouch", …)`.
 
-## Planned API
+## Quick start
 
 ```js
 const list = Sorta11y.create(document.querySelector("#my-list"), {
@@ -158,6 +189,53 @@ that drives pickup even in a screen reader's browse mode:
   </li>
 </ul>
 ```
+
+## API
+
+### Options
+
+All options can also be set declaratively as `data-*` attributes on the list
+(e.g. `data-handle`, `data-application-role`) when using `autoInit`.
+
+| Option            | Default                        | What it does                                                                                                                                         |
+| ----------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handle`          | `null`                         | Selector for a drag handle inside each item (a real `<button>` recommended). Without one, the whole item is the grab target.                         |
+| `keyboard`        | `true`                         | Keyboard grab / move / drop layer.                                                                                                                   |
+| `pointer`         | `true`                         | Pointer/touch drag layer.                                                                                                                            |
+| `clickToGrab`     | `true`                         | A pointer **tap** (no drag) picks up / drops like <kbd>Space</kbd> — the WCAG 2.5.7 single-pointer path. `false` = the pointer can only drag.        |
+| `dragOnItem`      | `false`                        | With a handle: pointer drags/taps may start anywhere on the item (bigger target, WCAG 2.5.8). Keyboard & screen-reader semantics stay on the handle. |
+| `dragOnItemTouch` | `false`                        | Widen the **touch/pen** drag surface to the whole item (`touch-action: none` — only for short, non-scrolling lists).                                 |
+| `applicationRole` | `true`                         | Toggle `role="application"` on a wrapper only while an item is held (screen-reader focus mode).                                                      |
+| `animation`       | `150`                          | FLIP slide duration in ms; `0` disables. Honours `prefers-reduced-motion`.                                                                           |
+| `easing`          | `"cubic-bezier(0.2, 0, 0, 1)"` | Easing for the slide animation.                                                                                                                      |
+| `announceTotal`   | `true`                         | Include "of Y" in position announcements.                                                                                                            |
+| `dataIdAttr`      | `"data-id"`                    | Attribute that identifies items (focus restore, `toArray`, `sort`).                                                                                  |
+| `grabbedClass`    | `null`                         | Extra class(es) on the item during a keyboard grab (alongside `.s11y-item--grabbed`).                                                                |
+| `draggingClass`   | `null`                         | Extra class(es) on the item during a pointer drag (alongside `.s11y-item--dragging`).                                                                |
+| `labels`          | `null`                         | Your own announcement strings (full i18n) — always wins.                                                                                             |
+| `locale`          | `null`                         | Pick a registered locale for the announcements.                                                                                                      |
+| `onChange`        | `null`                         | `({ item, oldIndex, newIndex, order, source }) => {}` after a committed reorder (`source: "keyboard" \| "pointer"`).                                 |
+
+### Static methods
+
+| Method                                      | What it does                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------- |
+| `Sorta11y.create(el, options?)`             | Enhance a `<ul>`/`<ol>` and return the instance.                                |
+| `Sorta11y.get(el)`                          | Return the instance attached to an element, or `null`.                          |
+| `Sorta11y.autoInit(root?)`                  | Enhance every `[data-sorta11y]` list (options via `data-*` attributes).         |
+| `Sorta11y.fromSelect(select, options?)`     | Build a sortable list from a `<select multiple>` and keep it mirrored.          |
+| `Sorta11y.mirrorToSelect(evt, select)`      | Mirror an `onChange` order into a hidden `<select multiple>` for plain submits. |
+| `Sorta11y.setDefaultLabels(labelsOrLocale)` | Set the default announcement labels (object or registered locale name).         |
+
+### Instance methods
+
+| Method                  | What it does                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `refresh()`             | Re-resolve items and re-apply ARIA + roving tabindex after external DOM changes. |
+| `toArray()`             | Current order as an array of `data-id`s.                                         |
+| `sort(order, animate?)` | Reorder to the given array of ids, optionally with the slide animation.          |
+| `option(name, value?)`  | Read (1 arg) or live-update (2 args) an option.                                  |
+| `destroy()`             | Remove all enhancements, listeners and ARIA wiring (idempotent).                 |
 
 ## Internationalisation
 
@@ -257,6 +335,18 @@ npm run demo       # serve the project, then open http://localhost:8090/demo/
 
 The library source is a single hand-written UMD file (`src/sorta11y.js`) plus
 `src/sorta11y.css` — there is **no build step**; what you read is what ships.
+
+## Browser & AT support
+
+Evergreen Chromium (Chrome/Edge), Firefox and Safari. The drag layer is built
+on [Pointer Events](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events)
+with `setPointerCapture` — no Internet Explorer. The library runs entirely in
+the browser; Node is only needed for development.
+
+Screen-reader behaviour is documented in the
+[AT test matrix](./docs/at-test-matrix.md): an NVDA + Chrome/Edge run passes
+the core scenarios; the three official matrix runs (NVDA + Firefox,
+JAWS + Chrome, VoiceOver + Safari) are still pending.
 
 ## Known limitations
 

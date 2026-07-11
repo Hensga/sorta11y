@@ -107,8 +107,8 @@ Pro Lauf wird hier (oder in einer verlinkten Datei) eine Tabelle
 Kombination × Szenario mit ✅ / ⚠️ / ❌ + Notiz festgehalten — als Portfolio-Beleg
 und Regressionsbasis.
 
-| Datum      | Screenreader + Browser         | Szenarien      | Ergebnis | Notiz                                                                                                                                                                                                                       |
-| ---------- | ------------------------------ | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Datum      | Screenreader + Browser         | Szenarien      | Ergebnis | Notiz                                                                                                                                                                                                                                    |
+| ---------- | ------------------------------ | -------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-07-09 | NVDA + Chrome/Edge (Windows)\* | S2, S3, S5, S6 | ✅       | Browse-Modus-Pickup per Leertaste/Enter am Handle, Pfeiltasten bewegen nach automatischem Fokusmodus-Wechsel, Ablegen + Escape ok. Getestet auf einer Produktions-Formularintegration (Handles via `fromSelect`, `clickToGrab` Default). |
 
 \* Nicht identisch mit Matrix-Kombination #1/#2 — die offiziellen Läufe

@@ -23,6 +23,14 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Secrets — never commit credentials
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+
 # Logs
 npm-debug.log*
 yarn-error.log*
