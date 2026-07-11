@@ -1,0 +1,39 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Pages sites built from private repos are still publicly reachable —
+    # never deploy before the repo itself is public.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble Pages artifact (site + demo + library source)
+        # site/ and demo/ load the library via ../src/ — ship all three
+        # side by side so those relative paths keep resolving.
+        run: |
+          mkdir _pages
+          cp -r src site demo _pages/
+          printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=site/"><title>sorta11y</title><a href="site/">sorta11y</a>' > _pages/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _pages
+      - id: deployment
+        uses: actions/deploy-pages@v4
