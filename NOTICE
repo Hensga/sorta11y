@@ -1,0 +1,33 @@
+sorta11y
+Copyright (c) 2026 Henning Huth
+
+This product is licensed under the MIT License (see LICENSE).
+
+----------------------------------------------------------------------
+Third-party attribution
+----------------------------------------------------------------------
+
+sorta11y ships with NO runtime dependencies. Its accessibility behaviour
+(the keyboard grab / move / drop model, roving tabindex, ARIA live-region
+timing, and focus restoration) was studied from the MIT-licensed projects
+listed below.
+
+No source files and no user-facing announcement strings were copied
+verbatim — sorta11y uses its own wording and its own implementation. This
+attribution is provided as a courtesy and to honour the MIT notice where
+behavioural patterns were referenced.
+
+  @hello-pangea/dnd — MIT License
+    https://github.com/hello-pangea/dnd
+
+  SortableJS — MIT License
+    https://github.com/SortableJS/Sortable
+
+  dragon-drop (accessible drag-and-drop pattern) — MIT License
+    https://github.com/schne324/dragon-drop
+
+  Space Mono (font, self-hosted by the docs site only — not part of the
+  library) — SIL Open Font License 1.1, see site/fonts/OFL.txt
+    https://github.com/googlefonts/spacemono
+
+  © their respective authors.

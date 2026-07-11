@@ -1,0 +1,30 @@
+# Dependencies (dev tooling only — the shipped library has zero runtime deps)
+node_modules/
+
+# Design Handoff
+Design_Handoff/
+
+# Local working notes (roadmap, TODOs — not part of the public repo)
+*.local.md
+
+# Test / coverage output
+coverage/
+*.lcov
+.nyc_output/
+.vitest/
+
+# Packaging artefacts
+*.tgz
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log

@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="de" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sorta11y — Features</title>
+    <link rel="stylesheet" href="../src/sorta11y.css" />
+    <style>
+      /* Demo-only styling — NOT part of the library. Kept deliberately plain. */
+      :root {
+        --bg: #f7f6f3;
+        --surface: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --line: #e3e0d9;
+        --chip: #eeece7;
+        --accent: #1f6feb;
+        --accent-soft: #eaf1ff;
+        --code-bg: #f6f7f9;
+        --code-ink: #24292e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 60rem;
+        margin: 0 auto;
+        padding: 0 1.25rem;
+      }
+      a {
+        color: var(--accent);
+      }
+
+      code {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      /* Inline code chips — but not the code inside a <pre class="code">. */
+      :not(pre) > code {
+        background: var(--chip);
+        border-radius: 4px;
+        padding: 0.02em 0.35em;
+      }
+      kbd {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.82em;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0.02em 0.4em;
+        color: var(--ink);
+      }
+
+      /* Hero -------------------------------------------------------------- */
+      .hero {
+        padding: 3rem 0 1.5rem;
+      }
+      .hero h1 {
+        font-size: clamp(2rem, 1rem + 4vw, 3rem);
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      .hero h1 .a11y {
+        color: var(--accent);
+      }
+      .tagline {
+        font-size: 1.1rem;
+        color: var(--muted);
+        max-width: 40rem;
+        margin: 0.5rem 0 0.75rem;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0 0 1.25rem;
+      }
+      .keyhint {
+        font-size: 0.92rem;
+        color: var(--muted);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+      }
+
+      /* Feature sections -------------------------------------------------- */
+      main {
+        padding-bottom: 3rem;
+      }
+      .feature {
+        padding: 2.25rem 0;
+        border-top: 1px solid var(--line);
+      }
+      .feature > h2 {
+        font-size: 1.5rem;
+        letter-spacing: -0.01em;
+        margin: 0 0 0.35rem;
+      }
+      .feature > .lead {
+        color: var(--muted);
+        max-width: 44rem;
+        margin: 0 0 1rem;
+      }
+
+      /* Controls (plain, no pill chrome) ---------------------------------- */
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1.1rem;
+        margin: 0 0 1rem;
+      }
+      .controls__title {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .controls__sep {
+        width: 1px;
+        height: 1.1rem;
+        background: var(--line);
+      }
+      .opt {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+      .opt input {
+        width: 1rem;
+        height: 1rem;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+      .opt input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* Stage ------------------------------------------------------------- */
+      .stage {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 46rem) {
+        .stage.with-code {
+          grid-template-columns: 1fr 1fr;
+          align-items: start;
+        }
+      }
+
+      /* Demo list — plain rows with thin separators. ---------------------- */
+      .demo-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .demo-list li {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.7rem 0.85rem;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+      .demo-list li:last-child {
+        border-bottom: 0;
+      }
+      .demo-list li.handle-right .drag-handle,
+      .demo-list .s11y-handle--right {
+        margin-left: auto;
+      }
+      .demo-list li.s11y-item--grabbed,
+      .demo-list li.s11y-item--dragging {
+        background: var(--accent-soft);
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .demo-list li.is-lifted {
+        background: #fff5e9;
+        outline: 2px solid #d97706;
+        outline-offset: -2px;
+      }
+      .demo-list li.is-dragging {
+        background: #ecfdf5;
+        outline: 2px solid #059669;
+        outline-offset: -2px;
+      }
+      /* Non-color state cue: color alone would fail WCAG 1.4.1, so the custom
+         class also renders a text label. Badge text/bg contrast >= 4.5:1. */
+      .demo-list li.is-lifted::after,
+      .demo-list li.is-dragging::after {
+        margin-left: auto;
+        flex: none;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #fff;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+      }
+      .demo-list li.is-lifted::after {
+        content: "gegriffen";
+        background: #b45309;
+      }
+      .demo-list li.is-dragging::after {
+        content: "zieht";
+        background: #047857;
+      }
+
+      .drag-handle,
+      .s11y-handle {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: var(--muted);
+        cursor: grab;
+        padding: 0.05rem 0.3rem;
+        border-radius: 4px;
+        letter-spacing: 0.1em;
+      }
+      .s11y-item--dragging .drag-handle,
+      .s11y-item--dragging .s11y-handle {
+        cursor: grabbing;
+      }
+      .drag-handle:focus-visible,
+      .s11y-handle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .demo-list li:has(.drag-handle:focus-visible),
+      .demo-list li:has(.s11y-handle:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .demo-list li:has(.drag-handle:focus-visible) .drag-handle,
+      .demo-list li:has(.s11y-handle:focus-visible) .s11y-handle {
+        outline: none;
+      }
+
+      /* Code — light and readable. ---------------------------------------- */
+      .code {
+        margin: 0;
+        background: var(--code-bg);
+        color: var(--code-ink);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0.9rem 1rem;
+        overflow-x: auto;
+        font:
+          0.85rem/1.55 ui-monospace,
+          Menlo,
+          Consolas,
+          monospace;
+      }
+      .code .tok-key {
+        color: #d73a49;
+      }
+      .code .tok-str {
+        color: #22863a;
+      }
+      .code .tok-num {
+        color: #005cc5;
+      }
+      .code .tok-com {
+        color: #6a737d;
+        font-style: italic;
+      }
+
+      /* Readout / announcer ---------------------------------------------- */
+      .readout {
+        display: block;
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .readout strong {
+        color: var(--ink);
+      }
+      .announcer {
+        margin: 0;
+        min-height: 2.6rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        border-radius: 6px;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.95rem;
+        color: var(--ink);
+      }
+      .announcer:empty::before {
+        content: "Nimm einen Eintrag auf und bewege ihn — hier erscheint, was ein Screenreader ansagt.";
+        color: var(--muted);
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 1.75rem 0 3rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .demo-list li {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="wrap">
+        <h1>sort<span class="a11y">a11y</span></h1>
+        <p class="tagline">
+          Barrierefreie, abhängigkeitsfreie Vanilla-JS-Sortierliste — Tastatur,
+          Maus/Touch und Screenreader. Kein Framework, kein Build-Step.
+        </p>
+        <p class="meta">
+          Zero Dependencies · WCAG 2.2 · Tastatur + Touch · Screenreader-Ansagen
+        </p>
+        <p class="keyhint">
+          <strong>Alle Beispiele sind live.</strong> Per Tastatur:
+          <kbd>Tab</kbd> auf einen Griff, <kbd>Leertaste</kbd> aufnehmen,
+          <kbd>↑</kbd>/<kbd>↓</kbd> bewegen, <kbd>Leertaste</kbd> ablegen,
+          <kbd>Esc</kbd> abbrechen — oder mit Maus/Touch ziehen. Schalte die
+          Optionen um und beobachte, wie sich Verhalten <em>und</em> Code
+          ändern.
+        </p>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <!-- 1 · Grundliste -->
+      <section class="feature" id="f-basic" aria-labelledby="h-basic">
+        <h2 id="h-basic">Grundliste</h2>
+        <p class="lead">
+          Eine server-gerenderte <code>&lt;ul&gt;</code>, die sorta11y nur
+          <em>enhanced</em>. Jeder Eintrag ist ein Tab-Stopp. Neben den
+          eingebauten Zustands-Klassen kann sorta11y beim Greifen eine eigene
+          Klasse ans Item hängen: <code>grabbedClass</code> beim
+          <strong>Tastatur-Griff</strong> (<code>Tab</code> auf eine Zeile, dann
+          <code>Space</code>), <code>draggingClass</code> beim
+          <strong>Maus- oder Touch-Ziehen</strong>. Beide sind additiv — die
+          interne CSS (z-index-Lift) bleibt erhalten. Zur Demo signalisiert die
+          eigene Klasse den Zustand über
+          <strong>Farbe und ein Text-Label</strong> — Farbe allein wäre nach
+          WCAG 1.4.1 zu wenig. Schalte sie zu und vergleiche. Mit
+          <code>clickToGrab</code> (Standard: an) legst du fest, ob ein Klick
+          ein Element aufnimmt wie die Leertaste — aus bedeutet: die Maus kann
+          <strong>nur ziehen</strong>.
+        </p>
+        <div class="controls">
+          <span class="controls__title">Optionen</span>
+          <label class="opt"
+            ><input type="checkbox" id="basic-anim" checked /> Animation</label
+          >
+          <label class="opt"
+            ><input type="checkbox" id="basic-grab" />
+            <code>grabbedClass</code></label
+          >
+          <label class="opt"
+            ><input type="checkbox" id="basic-drag" />
+            <code>draggingClass</code></label
+          >
+          <label class="opt"
+            ><input type="checkbox" id="basic-click" checked />
+            <code>clickToGrab</code></label
+          >
+        </div>
+        <div class="stage with-code">
+          <ul class="demo-list" id="list-basic" aria-label="Grundliste"></ul>
+          <pre class="code"><code id="code-basic"></code></pre>
+        </div>
+      </section>
+
+      <!-- 2 · Drag-Handle -->
+      <section class="feature" id="f-handle" aria-labelledby="h-handle">
+        <h2 id="h-handle">Drag-Handle</h2>
+        <p class="lead">
+          Mit einem echten <code>&lt;button&gt;</code>-Griff wird der Griff zum
+          Steuerelement (mit <code>aria-pressed</code>) — der empfohlene Weg für
+          vollen Screenreader-Support. Ohne Griff ist die ganze Zeile das
+          Greif-Ziel.
+        </p>
+        <div class="controls">
+          <span class="controls__title">Griff</span>
+          <label class="opt"
+            ><input type="checkbox" id="handle-on" checked /> anzeigen</label
+          >
+        </div>
+        <div class="stage with-code">
+          <ul
+            class="demo-list"
+            id="list-handle"
+            aria-label="Liste mit Griff"
+          ></ul>
+          <pre class="code"><code id="code-handle"></code></pre>
+        </div>
+      </section>
+
+      <!-- 3 · fromSelect -->
+      <section class="feature" id="f-select" aria-labelledby="h-select">
+        <h2 id="h-select">Aus einem <code>&lt;select multiple&gt;</code></h2>
+        <p class="lead">
+          <code>Sorta11y.fromSelect()</code> baut die barrierefreie Liste aus
+          einem <code>&lt;select&gt;</code> (das Spiegelbild von
+          <code>mirrorToSelect</code>), versteckt das Select und spiegelt jede
+          Umsortierung zurück — ein normaler Formular-Submit trägt die
+          Reihenfolge. Wähle die Griff-Seite: rechts ist am Touchscreen besser
+          per Daumen erreichbar.
+        </p>
+        <div class="controls">
+          <span class="controls__title">Griff-Seite</span>
+          <label class="opt"
+            ><input type="radio" name="sel-pos" value="left" checked />
+            Links</label
+          >
+          <label class="opt"
+            ><input type="radio" name="sel-pos" value="right" /> Rechts</label
+          >
+          <span class="controls__sep" aria-hidden="true"></span>
+          <span class="controls__title">Griff</span>
+          <label class="opt"
+            ><input type="checkbox" id="sel-handle" checked /> anzeigen</label
+          >
+        </div>
+        <div class="stage with-code">
+          <div>
+            <select
+              id="src-select"
+              name="groups[]"
+              multiple
+              hidden
+              aria-hidden="true"
+            ></select>
+            <output class="readout" id="select-readout"></output>
+          </div>
+          <pre class="code"><code id="code-select"></code></pre>
+        </div>
+      </section>
+
+      <!-- 4 · Screenreader-Ansagen -->
+      <section class="feature" id="f-announce" aria-labelledby="h-announce">
+        <h2 id="h-announce">Was der Screenreader hört</h2>
+        <p class="lead">
+          sorta11y spricht jede Änderung über eine ARIA-Live-Region aus — sonst
+          unsichtbar. Hier wird sie sichtbar gespiegelt: nimm einen Eintrag auf
+          und bewege ihn, dann erscheint die Ansage im Kasten.
+        </p>
+        <div class="stage">
+          <ul
+            class="demo-list"
+            id="list-announce"
+            aria-label="Ansage-Demo"
+          ></ul>
+          <p class="announcer" id="announcer" aria-hidden="true"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      <p>
+        sorta11y · MIT ·
+        <a href="https://github.com/Hensga/sorta11y">GitHub</a> — diese Demo ist
+        absichtlich selbst barrierefrei (semantisches Markup, beschriftete
+        Controls, sichtbarer Fokus).
+      </p>
+    </footer>
+
+    <script src="../src/sorta11y.js"></script>
+    <script src="../src/locales/de.js"></script>
+    <script>
+      Sorta11y.setDefaultLabels("de");
+
+      var TASKS = [
+        "Anmeldung prüfen",
+        "Beiträge zuordnen",
+        "Sitzungen planen",
+        "Programm veröffentlichen",
+        "Rechnungen stellen",
+      ];
+      var IDS = ["a", "b", "c", "d", "e"];
+
+      // --- tiny code "highlighter" (keys / strings / numbers / comments) ----
+      function esc(s) {
+        return s.replace(/[&<>]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c];
+        });
+      }
+      function highlight(code) {
+        return esc(code)
+          .replace(/(\/\/[^\n]*)/g, '<span class="tok-com">$1</span>')
+          .replace(/(&quot;|&#39;|['"])(.*?)\1/g, function (m) {
+            return '<span class="tok-str">' + m + "</span>";
+          })
+          .replace(/\b(\d+)\b/g, '<span class="tok-num">$1</span>')
+          .replace(
+            /\b(Sorta11y|create|fromSelect|true|false|null)\b/g,
+            '<span class="tok-key">$1</span>',
+          );
+      }
+      function setCode(id, code) {
+        document.getElementById(id).innerHTML = highlight(code);
+      }
+
+      function liMarkup(names, opts) {
+        opts = opts || {};
+        return names
+          .map(function (name, i) {
+            var id = IDS[i];
+            if (!opts.handle) {
+              return (
+                '<li data-id="' +
+                id +
+                '" data-label="' +
+                name +
+                '">' +
+                name +
+                "</li>"
+              );
+            }
+            var btn =
+              '<button type="button" class="drag-handle" aria-label="' +
+              name +
+              ' verschieben">⠿</button>';
+            var inner = opts.position === "right" ? name + btn : btn + name;
+            return (
+              '<li data-id="' +
+              id +
+              '" data-label="' +
+              name +
+              '" class="handle-' +
+              (opts.position || "left") +
+              '">' +
+              inner +
+              "</li>"
+            );
+          })
+          .join("");
+      }
+
+      // === 1 · Grundliste ===================================================
+      (function () {
+        var list = document.getElementById("list-basic");
+        var anim = document.getElementById("basic-anim");
+        var grab = document.getElementById("basic-grab");
+        var drag = document.getElementById("basic-drag");
+        var click = document.getElementById("basic-click");
+        var inst = null;
+        function build() {
+          if (inst) inst.destroy();
+          list.innerHTML = liMarkup(TASKS, { handle: false });
+          var o = { animation: anim.checked ? 150 : 0 };
+          if (grab.checked) o.grabbedClass = "is-lifted";
+          if (drag.checked) o.draggingClass = "is-dragging";
+          if (!click.checked) o.clickToGrab = false;
+          inst = Sorta11y.create(list, o);
+          var lines = ["Sorta11y.create(list, {"];
+          lines.push("  animation: " + (anim.checked ? "150" : "0") + ",");
+          if (grab.checked) lines.push('  grabbedClass: "is-lifted",');
+          if (drag.checked) lines.push('  draggingClass: "is-dragging",');
+          if (!click.checked) lines.push("  clickToGrab: false,");
+          lines.push("});");
+          setCode("code-basic", lines.join("\n"));
+        }
+        anim.addEventListener("change", build);
+        grab.addEventListener("change", build);
+        drag.addEventListener("change", build);
+        click.addEventListener("change", build);
+        build();
+      })();
+
+      // === 2 · Drag-Handle ==================================================
+      (function () {
+        var list = document.getElementById("list-handle");
+        var on = document.getElementById("handle-on");
+        var inst = null;
+        function build() {
+          if (inst) inst.destroy();
+          list.innerHTML = liMarkup(TASKS, { handle: on.checked });
+          inst = Sorta11y.create(
+            list,
+            on.checked ? { handle: ".drag-handle" } : {},
+          );
+          var code = on.checked
+            ? 'Sorta11y.create(list, {\n  handle: ".drag-handle",\n});'
+            : "Sorta11y.create(list, {\n  // handle: null → ganze Zeile ist der Griff\n});";
+          setCode("code-handle", code);
+        }
+        on.addEventListener("change", build);
+        build();
+      })();
+
+      // === 3 · fromSelect ===================================================
+      (function () {
+        var select = document.getElementById("src-select");
+        var readout = document.getElementById("select-readout");
+        var handleOn = document.getElementById("sel-handle");
+        var inst = null;
+
+        select.innerHTML = TASKS.map(function (name, i) {
+          return (
+            '<option value="' + IDS[i] + '" selected>' + name + "</option>"
+          );
+        }).join("");
+
+        function pos() {
+          return document.querySelector('input[name="sel-pos"]:checked').value;
+        }
+        function renderReadout() {
+          var order = Array.prototype.map
+            .call(select.options, function (o) {
+              return o.value;
+            })
+            .join(" → ");
+          readout.innerHTML =
+            "Verstecktes <code>&lt;select&gt;</code> (was der Submit trägt): <strong>" +
+            order +
+            "</strong>";
+        }
+        function build() {
+          if (inst) {
+            var oldUl = inst.el;
+            inst.destroy();
+            oldUl.remove();
+          }
+          inst = Sorta11y.fromSelect(select, {
+            handle: handleOn.checked,
+            handlePosition: pos(),
+            onChange: renderReadout,
+          });
+          // fromSelect already inserted the built list in place of the <select>.
+          // The library-built <ul> carries no demo styling of its own, so give it
+          // the same card look (border, row separators, no bullets) as the other
+          // hand-authored lists — this also lets `.demo-list .s11y-handle--right`
+          // float a right-side handle correctly.
+          inst.el.classList.add("demo-list");
+          var lines = ['Sorta11y.fromSelect("#groups", {'];
+          lines.push(
+            "  handle: " + (handleOn.checked ? "true" : "false") + ",",
+          );
+          lines.push('  handlePosition: "' + pos() + '",');
+          lines.push("});");
+          setCode("code-select", lines.join("\n"));
+          renderReadout();
+        }
+        Array.prototype.forEach.call(
+          document.querySelectorAll('input[name="sel-pos"]'),
+          function (r) {
+            r.addEventListener("change", build);
+          },
+        );
+        handleOn.addEventListener("change", build);
+        build();
+      })();
+
+      // === 4 · Screenreader-Ansagen ========================================
+      (function () {
+        var list = document.getElementById("list-announce");
+        var box = document.getElementById("announcer");
+        list.innerHTML = liMarkup(TASKS, { handle: true, position: "left" });
+        Sorta11y.create(list, { handle: ".drag-handle" });
+        // The library inserts its (visually hidden) live region after the list
+        // (after the .s11y-app wrapper when applicationRole is on — the
+        // default); mirror its text into a visible box so sighted users see it.
+        var live = list.nextElementSibling;
+        if (
+          list.parentElement &&
+          list.parentElement.classList.contains("s11y-app")
+        )
+          live = list.parentElement.nextElementSibling;
+        if (live && "MutationObserver" in window) {
+          new MutationObserver(function () {
+            var t = live.textContent.trim();
+            if (t) box.textContent = "🔊 " + t;
+          }).observe(live, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

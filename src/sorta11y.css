@@ -1,0 +1,57 @@
+/*!
+ * sorta11y — styles
+ * @license MIT · (c) 2026 Henning Huth
+ *
+ * Class prefix: `.s11y-`  (short for sorta11y; chosen to avoid colliding with
+ * legacy jQuery-UI `.ui-*` classes when both run on the same page).
+ *
+ * The library only needs the screen-reader helper and the structural/state
+ * hooks below; the visible look of items and handles is left to the consumer.
+ */
+
+/*
+ * Screen-reader-only content: visually hidden, still announced.
+ * Used for the live region and the keyboard-instructions element.
+ */
+.s11y-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(100%);
+  white-space: nowrap;
+}
+
+/* Structural hooks */
+.s11y-list {
+  /* container — set by Sorta11y.create() */
+}
+
+.s11y-item {
+  /* Establish a stacking context so a grabbed item can lift above its
+     neighbours while the FLIP slide plays. The slide itself is applied as an
+     inline transform/transition by the library at runtime. */
+  position: relative;
+}
+
+/* State hooks toggled by the behaviour layers */
+.s11y-item--grabbed {
+  /* keyboard grab active (aria-pressed=true) — lifts above siblings */
+  z-index: 1;
+}
+
+.s11y-item--dragging {
+  /* pointer/touch drag active — lifts above siblings */
+  z-index: 1;
+}
+
+/* Respect users who prefer reduced motion: no slide animation. */
+@media (prefers-reduced-motion: reduce) {
+  .s11y-item {
+    transition: none !important;
+  }
+}
