@@ -53,6 +53,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "demo": "python3 -m http.server 8090",
+    "preview": "npm --prefix website run build && sh scripts/assemble-pages.sh _preview/sorta11y && python3 -m http.server 8090 --directory _preview",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -1,0 +1,21 @@
+{
+  "name": "sorta11y-website",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Documentation site for sorta11y — kept as its own npm project so the library itself stays dependency-free.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.41.4",
+    "astro": "^7.1.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

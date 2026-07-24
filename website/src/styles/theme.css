@@ -1,0 +1,263 @@
+/* ============================================================================
+   sorta11y docs — Starlight theme
+   Carries the landing page's handwriting (site/site.css) into the docs:
+   warm-paper light mode, Space Mono as the brand voice for headings and
+   labels, system sans for body copy, pitch-black code panels, hairline rules,
+   6px radii. Dark mode is a deliberate counterpart — warm near-black rather
+   than Starlight's default blue-grey — not an afterthought.
+
+   Starlight ships its own properties inside `@layer starlight.*`; unlayered
+   rules like these win the cascade without needing !important.
+
+   A11y notes:
+     1. Links carry an underline, so they never depend on colour alone (1.4.1).
+     2. The palette is monochrome — every text tier is checked >= 4.5:1.
+     3. Focus rings match the landing page: 3px ink, 3px offset, inverted on
+        dark surfaces.
+   ========================================================================== */
+
+/* Space Mono — self-hosted, latin subset, SIL OFL 1.1 (see ../fonts/OFL.txt).
+   Vite fingerprints and rebases these URLs, so they survive the /sorta11y/docs
+   base path. Same files as site/fonts/ — keeps the docs free of third-party
+   requests, exactly like the landing page. */
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/space-mono-400-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/space-mono-700-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---- Brand tokens ------------------------------------------------------- */
+:root {
+  --s11y-mono: "Space Mono", ui-monospace, Menlo, Consolas, monospace;
+  --s11y-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --sl-font: var(--s11y-sans);
+  --sl-font-mono: var(--s11y-mono);
+
+  /* Slightly wider than Starlight's 45rem: the API tables need the room. */
+  --sl-content-width: 48rem;
+}
+
+/* ---- Dark theme (Starlight's `:root` default) --------------------------- */
+:root,
+:root[data-theme="dark"] {
+  --sl-color-white: #f4f1ea; /* max-contrast text: headings */
+  --sl-color-gray-1: #e4e0d7;
+  --sl-color-gray-2: #c6c1b6; /* body copy (~9.6:1 on --bg) */
+  --sl-color-gray-3: #9d978a; /* captions (~5.9:1) */
+  --sl-color-gray-4: #6b665c;
+  --sl-color-gray-5: #3d3931;
+  --sl-color-gray-6: #26241f;
+  --sl-color-black: #171614; /* warm near-black page */
+
+  --sl-color-accent-low: #2b2822;
+  --sl-color-accent: #d8d3c8;
+  --sl-color-accent-high: #f4f1ea;
+
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-invert: var(--sl-color-black);
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: #1c1a17;
+  --sl-color-bg-sidebar: var(--sl-color-bg);
+  --sl-color-bg-inline-code: #2b2822;
+  --sl-color-bg-accent: var(--sl-color-accent-high);
+  --sl-color-hairline-light: #34312a;
+  --sl-color-hairline: #26241f;
+  --sl-color-hairline-shade: #26241f;
+
+  --s11y-selection-bg: #f4f1ea;
+  --s11y-selection-ink: #171614;
+  --s11y-focus: #f4f1ea;
+}
+
+/* ---- Light theme — the landing page's warm paper ------------------------ */
+:root[data-theme="light"] {
+  --sl-color-white: #1a1a1a; /* max-contrast text: headings (ink) */
+  --sl-color-gray-1: #262626;
+  --sl-color-gray-2: #444; /* body copy (~9.7:1 on --bg) */
+  --sl-color-gray-3: #595959; /* captions (~7:1) */
+  --sl-color-gray-4: #8a857a;
+  --sl-color-gray-5: #c9c4b8; /* component edges */
+  --sl-color-gray-6: #e3e0d9; /* hairlines */
+  --sl-color-gray-7: #f4f2ec; /* zebra / raised rows */
+  --sl-color-black: #f7f6f3; /* warm off-white page */
+
+  --sl-color-accent-low: #e3e0d9;
+  --sl-color-accent: #1a1a1a;
+  --sl-color-accent-high: #1a1a1a;
+
+  --sl-color-text-accent: var(--sl-color-accent);
+  --sl-color-text-invert: #fff;
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-bg);
+  --sl-color-bg-inline-code: #ecebe4;
+  --sl-color-bg-accent: var(--sl-color-accent);
+  --sl-color-hairline-light: #e3e0d9;
+  --sl-color-hairline: #e3e0d9;
+  --sl-color-hairline-shade: #e3e0d9;
+
+  --s11y-selection-bg: #1a1a1a;
+  --s11y-selection-ink: #fff;
+  --s11y-focus: #1a1a1a;
+}
+
+::selection {
+  background: var(--s11y-selection-bg);
+  color: var(--s11y-selection-ink);
+}
+
+/* ---- Typography --------------------------------------------------------- */
+/* Monospace is the brand voice: headings, the site title, nav and sidebar
+   labels. Body copy stays system sans so long prose reads comfortably. */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6),
+.site-title,
+.content-panel h1 {
+  font-family: var(--s11y-mono);
+  letter-spacing: -0.02em;
+}
+
+.sl-markdown-content :is(h2, h3) {
+  /* Hairline above each section — the landing page's section rhythm. */
+  border-top: 1px solid var(--sl-color-hairline);
+  padding-top: 1.5rem;
+}
+
+.sl-markdown-content :is(h2, h3):first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* Sidebar and TOC labels read as machine output, not prose. */
+.sidebar-content summary,
+.sidebar-content .large,
+starlight-toc h2,
+mobile-starlight-toc .toggle {
+  font-family: var(--s11y-mono);
+  font-size: var(--sl-text-xs);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Links -------------------------------------------------------------- */
+/* Underlined by default: in a monochrome palette colour alone can't carry the
+   affordance (WCAG 1.4.1 Use of Color). */
+.sl-markdown-content a:not(:where(.not-content *)) {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+.sl-markdown-content a:not(:where(.not-content *)):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ---- Focus -------------------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid var(--s11y-focus);
+  outline-offset: 3px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+/* Ink-on-ink is invisible — invert the ring inside the black code panels. */
+.expressive-code :focus-visible {
+  outline-color: #f4f1ea;
+}
+
+/* ---- Sidebar ------------------------------------------------------------ */
+/* The active entry is marked by weight + a rule, not colour alone. */
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover {
+  background-color: transparent;
+  color: var(--sl-color-white);
+  font-weight: 700;
+  border-inline-start: 2px solid var(--sl-color-white);
+  border-radius: 0;
+}
+
+.sidebar-content ul ul li {
+  border-inline-start: 1px solid var(--sl-color-hairline);
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+/* The API reference is mostly tables — give them the landing page's hairline
+   grid and zebra header instead of Starlight's borderless default. */
+.sl-markdown-content table {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 6px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-size: var(--sl-text-sm);
+}
+.sl-markdown-content :is(th, td) {
+  border: 0;
+  border-bottom: 1px solid var(--sl-color-hairline);
+  padding: 0.6rem 0.75rem;
+  vertical-align: top;
+}
+.sl-markdown-content thead th {
+  font-family: var(--s11y-mono);
+  font-size: var(--sl-text-xs);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+}
+.sl-markdown-content tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+/* ---- Inline code, kbd --------------------------------------------------- */
+.sl-markdown-content code:not(:where(.expressive-code *)) {
+  font-size: 0.9em;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+.sl-markdown-content kbd {
+  font-family: var(--s11y-mono);
+  font-size: 0.85em;
+  border: 1px solid var(--sl-color-gray-5);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0.15em 0.45em;
+  background: var(--sl-color-bg-inline-code);
+  white-space: nowrap;
+}
+
+/* ---- Code panels -------------------------------------------------------- */
+/* Always black, in both themes — the landing page's terminal accent. */
+.expressive-code .frame pre {
+  border-radius: 6px;
+}
+
+/* ---- Motion ------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

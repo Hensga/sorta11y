@@ -7,6 +7,14 @@ Design_Handoff/
 # Local working notes (roadmap, TODOs — not part of the public repo)
 *.local.md
 
+# Docs site build output (website/ is its own npm project; node_modules/ above
+# already covers website/node_modules/)
+website/dist/
+website/.astro/
+
+# Local Pages preview (npm run preview)
+_preview/
+
 # Test / coverage output
 coverage/
 *.lcov

@@ -14,6 +14,9 @@ announces every change through an ARIA live region. It progressively enhances a
 server-rendered `<ul><li>` list, so it degrades gracefully and coexists with
 existing pages.
 
+**[Documentation →](https://hensga.github.io/sorta11y/docs/)** — installation,
+guides and the full API reference.
+
 **[Live demo & playground →](https://hensga.github.io/sorta11y/)** — every
 example on the page is wired to the real library, with the live-region output
 shown next to each list.
@@ -138,18 +141,22 @@ During a grab, screen readers are switched into focus mode via a temporary
 `role="application"` wrapper, and pickup rides on the handle button's
 activation click so it works from browse mode. The full design rationale —
 focus-mode switching, `clickToGrab`, `dragOnItem`, `dragOnItemTouch`, touch
-and pen behaviour — lives in
-[docs/accessibility.md](./docs/accessibility.md).
+and pen behaviour — lives in the
+[accessibility model](https://hensga.github.io/sorta11y/docs/guides/accessibility/)
+and [pointer & touch](https://hensga.github.io/sorta11y/docs/guides/pointer-and-touch/)
+guides.
 
 ## API
 
 ### Options
 
-All options can also be set declaratively as `data-*` attributes on the list
-(e.g. `data-handle`, `data-application-role`) when using `autoInit`.
+Three of these can also be set declaratively on the list when using `autoInit`:
+`data-handle`, `data-rtl` and `data-application-role`. The rest need an options
+object passed to `Sorta11y.create()`.
 
 | Option            | Default                        | What it does                                                                                                                 |
 | ----------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `itemSelector`    | `"> li"`                       | Which children count as items.                                                                                               |
 | `handle`          | `null`                         | Selector for a drag handle inside each item (a real `<button>` recommended). Without one, the whole item is the grab target. |
 | `keyboard`        | `true`                         | Keyboard grab / move / drop layer.                                                                                           |
 | `pointer`         | `true`                         | Pointer/touch drag layer.                                                                                                    |
@@ -160,12 +167,16 @@ All options can also be set declaratively as `data-*` attributes on the list
 | `animation`       | `150`                          | FLIP slide duration in ms; `0` disables.                                                                                     |
 | `easing`          | `"cubic-bezier(0.2, 0, 0, 1)"` | Easing for the slide animation.                                                                                              |
 | `announceTotal`   | `true`                         | Include "of Y" in position announcements.                                                                                    |
+| `liveness`        | `"polite"`                     | `aria-live` value for the announcement region.                                                                               |
+| `rtl`             | `"auto"`                       | Right-to-left phrasing; `"auto"` follows the document/element direction.                                                     |
 | `dataIdAttr`      | `"data-id"`                    | Attribute that identifies items (focus restore, `toArray`, `sort`).                                                          |
 | `grabbedClass`    | `null`                         | Extra class(es) on the item during a keyboard grab.                                                                          |
 | `draggingClass`   | `null`                         | Extra class(es) on the item during a pointer drag.                                                                           |
 | `labels`          | `null`                         | Your own announcement strings (full i18n) — always wins.                                                                     |
 | `locale`          | `null`                         | Pick a registered locale for the announcements.                                                                              |
+| `onStart`         | `null`                         | Same event object, fired when an item is picked up.                                                                          |
 | `onChange`        | `null`                         | `({ item, oldIndex, newIndex, order, source }) => {}` after a committed reorder.                                             |
+| `onEnd`           | `null`                         | Same event object, fired after every drop **and** every cancel.                                                              |
 
 ### Static methods
 
@@ -181,7 +192,7 @@ All options can also be set declaratively as `data-*` attributes on the list
 `fromSelect` accepts all regular options plus: `handle: false` (no generated
 handle button), `handlePosition: "left" | "right"`, `handleLabel(text)` (the
 handle's accessible name) and `renderItem(li, option)` (custom row styling).
-Details: [docs/accessibility.md](./docs/accessibility.md#fromselect-details).
+Details: [Enhancing `<select multiple>`](https://hensga.github.io/sorta11y/docs/guides/select/).
 
 ### Instance methods
 
@@ -290,7 +301,7 @@ passed the core scenarios (2026-07-09); the three official matrix runs
   the list, which can affect flex/grid layouts.
 
 The reasoning behind each of these lives in
-[docs/accessibility.md](./docs/accessibility.md#limitations-in-depth).
+[Known limitations](https://hensga.github.io/sorta11y/docs/reference/limitations/).
 
 ## Contributing & feedback
 
@@ -303,12 +314,32 @@ findings — with scenario numbers and AT/browser versions.
 
 ## Development
 
+The library:
+
 ```bash
 npm install        # dev tooling only — the shipped library has zero runtime deps
 npm test           # Vitest + jsdom
 npm run coverage   # enforce the >= 80% target
-npm run demo       # serve the project, then open http://localhost:8090/demo/
+npm run format     # Prettier over the repo, docs site included
+npm run demo       # quick serve → http://localhost:8090/demo/
 ```
+
+The documentation site lives in `website/` as its own npm project, so the
+library's own `package.json` stays free of a build toolchain:
+
+```bash
+npm --prefix website install    # Astro + Starlight
+npm --prefix website run dev    # docs with hot reload → http://localhost:4321/sorta11y/docs/
+npm run preview                 # full Pages layout  → http://localhost:8090/sorta11y/site/
+```
+
+`npm run demo` serves the repository root, where the `docs/` folder is a
+directory of Markdown files — so the landing page's `docs` link only resolves
+under `npm run preview`, which reproduces the deployed layout (landing, demo and
+the built docs at the paths they actually get). Both use port 8090, so run one at
+a time. `scripts/assemble-pages.sh` builds that layout and is shared with the
+Pages workflow, so the preview stays a real test of the deploy rather than an
+approximation of it.
 
 ## Early supporters
 

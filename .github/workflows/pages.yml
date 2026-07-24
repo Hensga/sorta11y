@@ -23,15 +23,25 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      ASTRO_TELEMETRY_DISABLED: 1
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble Pages artifact (site + demo + library source)
-        # site/ and demo/ load the library via ../src/ — ship all three
-        # side by side so those relative paths keep resolving.
-        run: |
-          mkdir _pages
-          cp -r src site demo _pages/
-          printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=site/"><title>sorta11y</title><a href="site/">sorta11y</a>' > _pages/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Build the docs site
+        # website/ is a self-contained npm project, so the library's own
+        # package.json stays free of Astro. Its `base` is /sorta11y/docs, which
+        # must match where the artifact mounts it below.
+        run: npm ci && npm run build
+        working-directory: website
+      - name: Assemble Pages artifact (site + demo + docs + library source)
+        # Same script `npm run preview` uses locally, so the preview is a real
+        # test of this layout rather than an approximation of it.
+        run: sh scripts/assemble-pages.sh _pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _pages
