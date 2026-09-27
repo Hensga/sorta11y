@@ -341,7 +341,7 @@ a time. `scripts/assemble-pages.sh` builds that layout and is shared with the
 Pages workflow, so the preview stays a real test of the deploy rather than an
 approximation of it.
 
-## Early supporters
+## Origins
 
 - [ConfTool](https://www.conftool.net) — supported sorta11y's early development
   with a real-world form integration and hands-on screen-reader testing.
