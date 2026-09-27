@@ -246,9 +246,14 @@
         border: 0;
         background: transparent;
         font: inherit;
+        line-height: 1;
         color: var(--muted);
         cursor: grab;
-        padding: 0.05rem 0.3rem;
+        /* ⠿ inks only the top three rows of its 8-dot braille cell, so it
+           sits ~0.15em above the text's centre. An extra 0.3em on top (none
+           below) lowers the glyph by half that while the 24px box itself
+           stays centred, focus ring included. */
+        padding: 0.3em 0.3rem 0;
         border-radius: 4px;
         letter-spacing: 0.1em;
       }

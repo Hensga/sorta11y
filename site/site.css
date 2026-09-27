@@ -536,7 +536,11 @@ h3 {
   font-size: 18px;
   line-height: 1;
   letter-spacing: 0.1em;
-  padding: 2px 4px;
+  /* ⠿ inks only the top three rows of its 8-dot braille cell, so it sits
+     ~0.15em above the text's centre. An extra 0.3em on top (none below)
+     lowers the glyph by half that while the 24px box itself stays centred,
+     focus ring included. */
+  padding: 0.3em 4px 0;
   cursor: grab;
 }
 .s11y-item--dragging .drag-handle,
