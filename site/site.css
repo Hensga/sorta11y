@@ -73,6 +73,32 @@
   /* Full-bleed bars, centered content: sections pad out to the viewport edge
      until the content column hits its max width. */
   --gutter: max(24px, calc((100% - 1160px) / 2));
+
+  /* Height of the sticky header. site.js overwrites it with the measured
+     height (ResizeObserver): the nav wraps onto more lines as the viewport
+     narrows or text is zoomed. The values here and in the media queries below
+     are only the no-JS / pre-script fallback — its measured one- to four-line
+     heights (55 / 91 / 122 / 159px), rounded up, with breakpoints rounded so
+     the fallback errs on the tall side. */
+  --header-h: 56px;
+  /* Clear space between the header and whatever scrolls into view below it
+     (fits the 3px + 3px focus ring with room to spare). */
+  --focus-gap: 16px;
+}
+@media (max-width: 42rem) {
+  :root {
+    --header-h: 92px;
+  }
+}
+@media (max-width: 29rem) {
+  :root {
+    --header-h: 124px;
+  }
+}
+@media (max-width: 23rem) {
+  :root {
+    --header-h: 160px;
+  }
 }
 
 *,
@@ -83,9 +109,10 @@
 
 html {
   background: var(--bg);
-  /* In-page anchors and shift-tabbed focus must not hide under the sticky
-     header. */
-  scroll-padding-top: 76px;
+  /* In-page anchors and focus must not hide under the sticky header
+     (WCAG 2.4.11). Follows the header's real height via --header-h. */
+  scroll-padding-top: calc(var(--header-h) + var(--focus-gap));
+  scroll-padding-bottom: var(--focus-gap);
 }
 
 body {
@@ -489,10 +516,19 @@ h3 {
 }
 
 /* Real, focusable braille handle (comes through as a <button> to sorta11y).
-   .s11y-handle is the library-generated fromSelect twin — same look. */
+   .s11y-handle is the library-generated fromSelect twin — same look.
+   At least 24×24 CSS px (WCAG 2.5.8) on its own, without leaning on the
+   spacing exception; the glyph stays centred. 24px is also the row's text
+   line height, so rows keep their height. */
 .drag-handle,
 .s11y-handle {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 24px;
+  min-height: 24px;
   border: 0;
   background: transparent;
   color: inherit;

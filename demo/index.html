@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>sorta11y — Features</title>
+    <!-- Inline favicon (braille ⠿ on ink), same as site/ — no extra request,
+         no favicon.ico 404. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2'/%3E%3Ctext x='8' y='12' font-size='10' text-anchor='middle' fill='%23fff'%3E%E2%A0%BF%3C/text%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="../src/sorta11y.css" />
     <style>
       /* Demo-only styling — NOT part of the library. Kept deliberately plain. */
@@ -226,9 +232,17 @@
         background: #047857;
       }
 
+      /* At least 24×24 CSS px (WCAG 2.5.8) on its own, without leaning on the
+         spacing exception; the glyph stays centred. */
       .drag-handle,
       .s11y-handle {
         appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        min-width: 24px;
+        min-height: 24px;
         border: 0;
         background: transparent;
         font: inherit;
@@ -258,6 +272,9 @@
       }
 
       /* Code — light and readable. ---------------------------------------- */
+      /* The snippets are short, so long lines wrap instead of scrolling: a
+         horizontally scrollable <pre> would need to be a focusable region to
+         stay keyboard-operable on narrow screens. */
       .code {
         margin: 0;
         background: var(--code-bg);
@@ -265,7 +282,8 @@
         border: 1px solid var(--line);
         border-radius: 6px;
         padding: 0.9rem 1rem;
-        overflow-x: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
         font:
           0.85rem/1.55 ui-monospace,
           Menlo,
@@ -288,8 +306,7 @@
 
       /* Readout / announcer ---------------------------------------------- */
       .readout {
-        display: block;
-        margin-top: 0.75rem;
+        margin: 0.75rem 0 0;
         font-size: 0.9rem;
         color: var(--muted);
       }
@@ -335,13 +352,14 @@
           Maus/Touch und Screenreader. Kein Framework, kein Build-Step.
         </p>
         <p class="meta">
-          Zero Dependencies · Designed für WCAG 2.2 (2.1.1 · 2.5.7 · 4.1.3) ·
-          Tastatur + Touch · Screenreader-Ansagen — manuelle AT-Verifikation
-          läuft
+          Keine Abhängigkeiten · ausgelegt auf WCAG 2.2 (2.1.1 · 2.5.7 · 4.1.3)
+          · Tastatur + Touch · Screenreader-Ansagen — die manuelle Prüfung mit
+          Screenreadern läuft noch
         </p>
         <p class="keyhint">
           <strong>Alle Beispiele sind live.</strong> Per Tastatur:
-          <kbd>Tab</kbd> auf einen Griff, <kbd>Leertaste</kbd> aufnehmen,
+          <kbd>Tab</kbd> auf einen Eintrag oder Griff, <kbd>Leertaste</kbd>
+          aufnehmen,
           <kbd>↑</kbd>/<kbd>↓</kbd> bewegen, <kbd>Leertaste</kbd> ablegen,
           <kbd>Esc</kbd> abbrechen — oder mit Maus/Touch ziehen. Schalte die
           Optionen um und beobachte, wie sich Verhalten <em>und</em> Code
@@ -356,19 +374,19 @@
         <h2 id="h-basic">Grundliste</h2>
         <p class="lead">
           Eine server-gerenderte <code>&lt;ul&gt;</code>, die sorta11y nur
-          <em>enhanced</em>. Jeder Eintrag ist ein Tab-Stopp. Neben den
-          eingebauten Zustands-Klassen kann sorta11y beim Greifen eine eigene
-          Klasse ans Item hängen: <code>grabbedClass</code> beim
-          <strong>Tastatur-Griff</strong> (<code>Tab</code> auf eine Zeile, dann
-          <code>Space</code>), <code>draggingClass</code> beim
-          <strong>Maus- oder Touch-Ziehen</strong>. Beide sind additiv — die
-          interne CSS (z-index-Lift) bleibt erhalten. Zur Demo signalisiert die
-          eigene Klasse den Zustand über
-          <strong>Farbe und ein Text-Label</strong> — Farbe allein wäre nach
-          WCAG 1.4.1 zu wenig. Schalte sie zu und vergleiche. Mit
-          <code>clickToGrab</code> (Standard: an) legst du fest, ob ein Klick
-          ein Element aufnimmt wie die Leertaste — aus bedeutet: die Maus kann
-          <strong>nur ziehen</strong>.
+          <em>erweitert</em> (Progressive Enhancement). Jeder Eintrag ist ein
+          Tab-Stopp. Zusätzlich zu den eingebauten Zustandsklassen kann sorta11y
+          beim Greifen eine eigene Klasse an den Eintrag hängen:
+          <code>grabbedClass</code> beim <strong>Aufnehmen</strong> per
+          <kbd>Leertaste</kbd> oder Klick, <code>draggingClass</code> beim
+          <strong>Ziehen mit Maus oder Finger</strong>. Beide ergänzen die
+          eingebauten Klassen, statt sie zu ersetzen — deren CSS
+          (z-index-Anhebung) greift weiter. In dieser Demo zeigt die eigene
+          Klasse den Zustand über <strong>Farbe und ein Text-Label</strong> —
+          Farbe allein wäre nach WCAG 1.4.1 zu wenig. Schalte sie zu und
+          vergleiche. Mit <code>clickToGrab</code> (Standard: an) legst du fest,
+          ob ein Klick oder Tippen einen Eintrag aufnimmt wie die Leertaste —
+          aus heißt: Maus und Touch können <strong>nur ziehen</strong>.
         </p>
         <div class="controls">
           <span class="controls__title">Optionen</span>
@@ -424,11 +442,12 @@
         <h2 id="h-select">Aus einem <code>&lt;select multiple&gt;</code></h2>
         <p class="lead">
           <code>Sorta11y.fromSelect()</code> baut die barrierefreie Liste aus
-          einem <code>&lt;select&gt;</code> (das Spiegelbild von
-          <code>mirrorToSelect</code>), versteckt das Select und spiegelt jede
-          Umsortierung zurück — ein normaler Formular-Submit trägt die
-          Reihenfolge. Wähle die Griff-Seite: rechts ist am Touchscreen besser
-          per Daumen erreichbar.
+          einem <code>&lt;select multiple&gt;</code> (das Gegenstück zu
+          <code>mirrorToSelect</code>), versteckt das
+          <code>&lt;select&gt;</code> und spiegelt jede Umsortierung dorthin
+          zurück — ein normaler Formular-Submit überträgt so die Reihenfolge.
+          Wähle die Seite des Griffs: Rechts ist er am Touchscreen besser mit
+          dem Daumen erreichbar.
         </p>
         <div class="controls">
           <span class="controls__title">Griff-Seite</span>
@@ -454,7 +473,10 @@
               hidden
               aria-hidden="true"
             ></select>
-            <output class="readout" id="select-readout"></output>
+            <!-- A plain <p>, not <output>: <output> is an implicit
+                 role="status" live region, so every reorder would be spoken
+                 twice (sorta11y's own announcement + this readout). -->
+            <p class="readout" id="select-readout"></p>
           </div>
           <pre class="code"><code id="code-select"></code></pre>
         </div>
@@ -464,9 +486,9 @@
       <section class="feature" id="f-announce" aria-labelledby="h-announce">
         <h2 id="h-announce">Was der Screenreader hört</h2>
         <p class="lead">
-          sorta11y spricht jede Änderung über eine ARIA-Live-Region aus — sonst
-          unsichtbar. Hier wird sie sichtbar gespiegelt: nimm einen Eintrag auf
-          und bewege ihn, dann erscheint die Ansage im Kasten.
+          sorta11y meldet jede Änderung über eine ARIA-Live-Region, die sonst
+          unsichtbar ist. Hier wird sie sichtbar gespiegelt: Nimm einen Eintrag
+          auf und bewege ihn, dann erscheint die Ansage im Kasten.
         </p>
         <div class="stage">
           <ul
@@ -482,9 +504,9 @@
     <footer class="wrap">
       <p>
         sorta11y · MIT ·
-        <a href="https://github.com/Hensga/sorta11y">GitHub</a> — diese Demo ist
-        absichtlich selbst barrierefrei (semantisches Markup, beschriftete
-        Controls, sichtbarer Fokus).
+        <a href="https://github.com/Hensga/sorta11y">GitHub</a> — auch diese
+        Demo-Seite selbst ist barrierefrei gebaut (semantisches Markup,
+        beschriftete Bedienelemente, sichtbarer Fokus).
       </p>
     </footer>
 
@@ -502,23 +524,37 @@
       ];
       var IDS = ["a", "b", "c", "d", "e"];
 
-      // --- tiny code "highlighter" (keys / strings / numbers / comments) ----
+      // --- tiny code "highlighter" ------------------------------------------
       function esc(s) {
         return s.replace(/[&<>]/g, function (c) {
           return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c];
         });
       }
+      // Single-pass tokenizer, same as site/site.js: one alternation, first
+      // match wins, so a later token class can never re-match markup an earlier
+      // one injected (chained .replace() calls let the string rule match the
+      // "tok-com" class attribute the comment rule had just written).
+      // Token kinds: comment, string, number, HTML tag name (after < or </),
+      // property/attribute name (before : or =), API keyword/literal. This page
+      // colours only key/str/num/com; tag and prop spans keep the base ink.
       function highlight(code) {
-        return esc(code)
-          .replace(/(\/\/[^\n]*)/g, '<span class="tok-com">$1</span>')
-          .replace(/(&quot;|&#39;|['"])(.*?)\1/g, function (m) {
-            return '<span class="tok-str">' + m + "</span>";
-          })
-          .replace(/\b(\d+)\b/g, '<span class="tok-num">$1</span>')
-          .replace(
-            /\b(Sorta11y|create|fromSelect|true|false|null)\b/g,
-            '<span class="tok-key">$1</span>',
-          );
+        return esc(code).replace(
+          /(\/\/[^\n]*|&lt;!--[\s\S]*?--&gt;)|("[^"\n]*"|'[^'\n]*')|\b(\d+)\b|((?<=&lt;\/?)[A-Za-z][\w-]*)|([A-Za-z_$][\w-]*(?=\s*[:=]))|\b(Sorta11y|create|fromSelect|autoInit|true|false|null)\b/g,
+          function (m, com, str, num, tag, prop) {
+            var cls = com
+              ? "tok-com"
+              : str
+                ? "tok-str"
+                : num
+                  ? "tok-num"
+                  : tag
+                    ? "tok-tag"
+                    : prop
+                      ? "tok-prop"
+                      : "tok-key";
+            return '<span class="' + cls + '">' + m + "</span>";
+          },
+        );
       }
       function setCode(id, code) {
         document.getElementById(id).innerHTML = highlight(code);
@@ -635,7 +671,7 @@
             })
             .join(" → ");
           readout.innerHTML =
-            "Verstecktes <code>&lt;select&gt;</code> (was der Submit trägt): <strong>" +
+            "Verstecktes <code>&lt;select&gt;</code> (das sendet der Submit): <strong>" +
             order +
             "</strong>";
         }

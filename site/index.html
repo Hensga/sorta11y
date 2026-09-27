@@ -37,11 +37,11 @@
           <a href="#keys">keyboard</a>
           <a href="#api">api</a>
           <!-- The docs are a separate Astro build mounted next to this page in
-               the Pages artifact (see .github/workflows/pages.yml). -->
+               the Pages artifact (see scripts/assemble-pages.sh). -->
           <a href="../docs/">docs</a>
         </div>
         <div class="nav__badges" aria-hidden="true">
-          <span class="badge">WIP · PHASE 3</span>
+          <span class="badge">ALPHA</span>
           <span class="badge badge--fill">ZERO DEPS</span>
           <span class="badge">MIT</span>
         </div>
@@ -427,10 +427,11 @@
           <aside class="callout">
             <p>
               The list's wrapper becomes <b>role="application"</b> only
-              <em>while</em> an item is held — so a screen reader's browse mode
-              passes the arrow keys through during the move, then hands reading
-              back the moment you drop. A real <b>&lt;button&gt;</b> handle can
-              be picked up straight from browse mode.
+              <em>while</em> an item is held — so a screen reader leaves browse
+              mode and passes the arrow keys through to the list during the
+              move, then returns to browse mode the moment you drop or cancel. A
+              real <b>&lt;button&gt;</b> handle can be picked up straight from
+              browse mode.
             </p>
           </aside>
         </div>
@@ -465,8 +466,8 @@
           </figure>
         </div>
         <p class="prose prose--small">
-          Label precedence: built-in English → <b>setDefaultLabels</b> →
-          <b>{ locale }</b> → <b>{ labels }</b>.
+          Label precedence, lowest to highest: built-in English →
+          <b>setDefaultLabels</b> → <b>{ locale }</b> → <b>{ labels }</b>.
         </p>
       </section>
 
@@ -490,9 +491,11 @@
             <p>Every reorder is spoken — drops and cancels alike.</p>
           </div>
           <div class="tile">
-            <h3>Focus restoration</h3>
+            <h3>Focus stays put</h3>
             <p>
-              Focus follows the moved item by data-id; it never falls to body.
+              Focus stays on the moved item — the same element — after keyboard,
+              pointer and programmatic reorders, so it never falls to
+              &lt;body&gt;.
             </p>
           </div>
           <div class="tile">
@@ -520,7 +523,7 @@
           <div>
             <p class="foot__coltitle">PROJECT</p>
             <a href="https://github.com/Hensga/sorta11y">GitHub</a>
-            <a href="https://github.com/Hensga/sorta11y#readme">Docs</a>
+            <a href="../docs/">Docs</a>
             <a href="https://github.com/Hensga/sorta11y/blob/main/LICENSE"
               >License</a
             >

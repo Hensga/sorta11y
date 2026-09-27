@@ -45,6 +45,30 @@
     document.getElementById(id).innerHTML = highlight(code);
   }
 
+  // === Sticky header vs. focus (WCAG 2.4.11 Focus Not Obscured) ==========
+  (function () {
+    var header = document.querySelector("body > header");
+    if (!header) return;
+    var root = document.documentElement;
+
+    // The nav wraps onto up to four lines on narrow screens or with zoomed
+    // text, so no fixed scroll-padding-top can clear it. Publish its real
+    // height as --header-h (site.css derives scroll-padding-top from it) and
+    // keep it current. Every scroll into view honours it: anchors, Tab, the
+    // list taking focus on pick-up, and sorta11y keeping a moved item in view
+    // (it scrolls the item's final position into view with block: "nearest").
+    function syncHeaderHeight() {
+      var h = Math.ceil(header.getBoundingClientRect().height);
+      root.style.setProperty("--header-h", h + "px");
+    }
+    syncHeaderHeight();
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(syncHeaderHeight).observe(header);
+    } else {
+      window.addEventListener("resize", syncHeaderHeight);
+    }
+  })();
+
   // Mirror an instance's live region into the "▸ spoken:" line AND the black
   // [sr] log panel (last LOG_MAX announcements + blinking caret). Re-attachable
   // so a rebuild (destroy + recreate) points the observer at the new region —
@@ -299,11 +323,14 @@
 
     function setLocale(loc, isDe) {
       inst.option("locale", loc); // null → built-in English; "de" → German
-      // WCAG 3.1.2 (language of parts): the visible mirror and the live region
-      // now carry German text — mark them so screen readers switch voices.
+      // WCAG 3.1.2 (language of parts): the visible mirror, the live region and
+      // the hidden keyboard instructions (each handle's aria-describedby) now
+      // carry German text — mark them so screen readers switch voices. Set
+      // "en" explicitly on the way back rather than relying on inheritance.
       var lang = isDe ? "de" : "en";
       document.getElementById("d-spoken").setAttribute("lang", lang);
       if (inst.liveRegion) inst.liveRegion.setAttribute("lang", lang);
+      if (inst.instructions) inst.instructions.setAttribute("lang", lang);
       enBtn.classList.toggle("is-on", !isDe);
       deBtn.classList.toggle("is-on", isDe);
       enBtn.setAttribute("aria-pressed", isDe ? "false" : "true");
