@@ -20,7 +20,7 @@ Each combination runs every scenario on its own; results go into the
 
 | #   | Scenario                              | Expected                                                                                                                                                                            |
 | --- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S1  | Walk the list (Tab)                   | **Every** item is a tab stop (Tab/Shift+Tab); the focused grab target is announced, including "Position X of Y".                                                                    |
+| S1  | Walk the list (Tab)                   | **Every** item is a tab stop (Tab/Shift+Tab); the focused grab target is announced with its name and the instructions (`aria-describedby`).                                         |
 | S2  | Pick up (Space/Enter)                 | In **browse mode**, the handle button picks up without a manual mode switch; "picked up" is announced with the arrow-key hint; `aria-pressed=true`.                                 |
 | S3  | Move (↑/↓)                            | The new position is announced after every move; focus stays on the moved item.                                                                                                      |
 | S4  | To the edge (Home/End)                | Jumps to the start/end with the correct position announced.                                                                                                                         |

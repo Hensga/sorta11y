@@ -20,8 +20,9 @@ old bundler pipeline without a toolchain.
 ## Assistive technology
 
 :::caution[Testing is incomplete]
-This is the honest state of things, not a support claim. Three of the four
-planned combinations have not been run yet.
+This is the honest state of things, not a support claim. None of the three
+official matrix combinations has been run yet — only an informal NVDA + Chrome
+run.
 :::
 
 | Screen reader + browser | Status                                             |

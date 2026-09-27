@@ -78,9 +78,10 @@ The live region and the hidden instructions sit _next to_ the `.s11y-app`
 wrapper, not inside it: live regions nested in an active application region
 can be announced inconsistently by NVDA and JAWS.
 
-Every committed change goes through it: keyboard pickups, moves, drops and
-cancels, **and** their pointer equivalents. There is no path through the library
-that changes the order silently.
+Every step a user takes goes through it: keyboard pickups, moves, drops and
+cancels, tap pickups and placements, and the end of every pointer drag, dropped
+or cancelled. A user-driven reorder is never silent. A programmatic `sort()` is
+the app's own change and announces nothing.
 
 ## Pointer parity
 
@@ -91,9 +92,9 @@ tap-to-pick-up alternative to dragging (WCAG 2.5.7). The full reasoning, and the
 
 ## What this model does not do
 
-- It does not claim conformance that has not been measured. Three of the four
-  planned AT combinations are still untested — see
-  [Browser & AT support](../reference/support.md).
+- It does not claim conformance that has not been measured. The three official
+  AT combinations are still untested; only an informal NVDA + Chrome run has
+  passed — see [Browser & AT support](../reference/support.md).
 - It does not support nested lists, transfer between lists, or grid reordering.
   Those need a different interaction model to be accessible, not a wider version
   of this one.

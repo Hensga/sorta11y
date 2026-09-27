@@ -38,12 +38,12 @@ at runtime with `list.option(name, value)`.
 
 ## Presentation
 
-| Option          | Default                        | What it does                                        |
-| --------------- | ------------------------------ | --------------------------------------------------- |
-| `animation`     | `150`                          | FLIP slide duration in ms; `0` disables it.         |
-| `easing`        | `"cubic-bezier(0.2, 0, 0, 1)"` | Easing for the slide.                               |
-| `grabbedClass`  | `null`                         | Extra class(es) on the item during a keyboard grab. |
-| `draggingClass` | `null`                         | Extra class(es) on the item during a pointer drag.  |
+| Option          | Default                        | What it does                                                           |
+| --------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| `animation`     | `150`                          | FLIP slide duration in ms; `0` disables it.                            |
+| `easing`        | `"cubic-bezier(0.2, 0, 0, 1)"` | Easing for the slide.                                                  |
+| `grabbedClass`  | `null`                         | Extra class(es) on the item while it is held (keyboard or tap pickup). |
+| `draggingClass` | `null`                         | Extra class(es) on the item during a pointer drag.                     |
 
 Both class options accept a space-separated list and are **additive** — the
 built-in `.s11y-item--grabbed` / `.s11y-item--dragging` hooks stay on. See
@@ -74,11 +74,12 @@ Use `onChange` to persist. Use `onEnd` for teardown that has to run either way
 
 ### Timing
 
-The library finishes its own work before it calls you. `onStart` fires after
-focus has moved and the pickup has been announced; `onChange` and `onEnd` fire
-after focus is back on the grab target and the grab has been cleaned up. So a
-callback that throws cannot leave the list half-grabbed, and focus you move
-inside a callback stays where you put it.
+The library finishes its own work before it calls you. After a keyboard or tap
+pickup, `onStart` fires once focus has moved and the pickup has been announced;
+after a drop, `onChange` and `onEnd` fire once focus is back on the grab target
+and the grab has been cleaned up. So a callback that throws cannot leave the
+list half-grabbed, and focus you move inside a callback stays where you put it.
+A pointer drag moves no focus and is announced only when it ends.
 
 ### `source`
 
@@ -134,11 +135,16 @@ needed:
 - `liveness` updates the live region's `aria-live` in place.
 - `labels` / `locale` re-resolve the label set and re-render the hidden
   instructions text.
-- `keyboard` / `pointer` attach or detach their listeners, cancelling any grab in
-  progress first, so the flag is never a lie.
+- `keyboard` / `pointer` attach or detach their listeners, first cancelling a
+  held item (`keyboard`) or a drag in progress (`pointer`), so the flag is never
+  a lie.
 - `applicationRole` cancels a live grab and re-syncs the container role.
 - `handle`, `itemSelector`, `dataIdAttr`, `dragOnItem`, `dragOnItemTouch` trigger
   a `refresh()` to re-resolve items and grab targets.
+- Everything else — `animation`, `easing`, `announceTotal`, `clickToGrab`, the
+  class options and the callbacks — is read when it is used, so a change applies
+  from the next step. Change `grabbedClass` / `draggingClass` only while nothing
+  is held, or the old classes stay on the held item.
 
 ```js
 list.option("animation"); // read

@@ -120,13 +120,14 @@ interaction. With a **drag handle** (recommended) the handle is a real
 listitem and the grab state is announced via the live region. Intentionally
 _no_ deprecated `aria-grabbed` / `aria-dropeffect`.
 
-| Key                                              | Action                                |
-| ------------------------------------------------ | ------------------------------------- |
-| <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Move focus between items              |
-| <kbd>Space</kbd>                                 | Pick up / drop the focused item       |
-| <kbd>↑</kbd> / <kbd>↓</kbd>                      | Move the held item one position       |
-| <kbd>Home</kbd> / <kbd>End</kbd>                 | Move the held item to the start / end |
-| <kbd>Esc</kbd>                                   | Cancel and restore the original order |
+| Key                                              | Action                                           |
+| ------------------------------------------------ | ------------------------------------------------ |
+| <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Move focus between items                         |
+| <kbd>Space</kbd>                                 | Pick up / drop the focused item                  |
+| <kbd>Enter</kbd>                                 | Same as Space on a handle; plain items ignore it |
+| <kbd>↑</kbd> / <kbd>↓</kbd>                      | Move the held item one position                  |
+| <kbd>Home</kbd> / <kbd>End</kbd>                 | Move the held item to the start / end            |
+| <kbd>Esc</kbd>                                   | Cancel and restore the original order            |
 
 - One **ARIA live region** per instance (`polite`), pre-inserted so the first
   announcement is never swallowed.
@@ -176,7 +177,7 @@ need an options object passed to `Sorta11y.create()`.
 | `liveness`        | `"polite"`                     | `aria-live` value for the announcement region.                                                                               |
 | `rtl`             | `"auto"`                       | Reserved — currently has no effect.                                                                                          |
 | `dataIdAttr`      | `"data-id"`                    | Attribute that identifies items for `toArray()` and `sort()`.                                                                |
-| `grabbedClass`    | `null`                         | Extra class(es) on the item during a keyboard grab.                                                                          |
+| `grabbedClass`    | `null`                         | Extra class(es) on the item while it is held (keyboard or tap pickup).                                                       |
 | `draggingClass`   | `null`                         | Extra class(es) on the item during a pointer drag.                                                                           |
 | `labels`          | `null`                         | Your own announcement strings (full i18n) — always wins.                                                                     |
 | `locale`          | `null`                         | Pick a registered locale for the announcements.                                                                              |
@@ -193,7 +194,7 @@ need an options object passed to `Sorta11y.create()`.
 | `Sorta11y.autoInit(root?)`                  | Enhance every `[data-sorta11y]` list (three options via `data-*` attributes).   |
 | `Sorta11y.fromSelect(select, options?)`     | Build a sortable list from a `<select multiple>` and keep it mirrored.          |
 | `Sorta11y.mirrorToSelect(evt, select)`      | Mirror an `onChange` order into a hidden `<select multiple>` for plain submits. |
-| `Sorta11y.setDefaultLabels(labelsOrLocale)` | Set the default announcement labels (object or registered locale name).         |
+| `Sorta11y.setDefaultLabels(labelsOrLocale)` | Set the default labels for lists created afterwards (object or locale name).    |
 
 `fromSelect` accepts all regular options plus `label` (the list's accessible
 name; defaults to the select's own `aria-labelledby`, `aria-label` or
@@ -209,8 +210,8 @@ instance's `.sourceSelect` is the original select. Details:
 | Method                  | What it does                                                              |
 | ----------------------- | ------------------------------------------------------------------------- |
 | `refresh()`             | Re-resolve items and re-apply ARIA + tabindex after external DOM changes. |
-| `toArray()`             | Current order as an array of `data-id`s.                                  |
-| `sort(order, animate?)` | Reorder to the given array of ids, optionally with the slide animation.   |
+| `toArray()`             | Current order as an array of ids (the `dataIdAttr` values).               |
+| `sort(order, animate?)` | Reorder to the given array of ids — animated unless `animate` is `false`. |
 | `option(name, value?)`  | Read (1 arg) or live-update (2 args) an option.                           |
 | `destroy()`             | Remove all enhancements, listeners and ARIA wiring (idempotent).          |
 
@@ -269,10 +270,10 @@ Sorta11y.fromSelect("#groups", {
 sorta11y ships almost no visual CSS — it sets only structural/state hooks and
 leaves the look to you:
 
-| Class                  | When                           |
-| ---------------------- | ------------------------------ |
-| `.s11y-item--grabbed`  | a keyboard grab is active      |
-| `.s11y-item--dragging` | a pointer/touch drag is active |
+| Class                  | When                                     |
+| ---------------------- | ---------------------------------------- |
+| `.s11y-item--grabbed`  | an item is held (keyboard or tap pickup) |
+| `.s11y-item--dragging` | a pointer/touch drag is active           |
 
 Style these to make the picked-up state visible. For utility-class frameworks,
 `grabbedClass` / `draggingClass` add your own hooks **alongside** the built-in

@@ -5,14 +5,14 @@ description: The static API on Sorta11y and the instance methods returned by cre
 
 ## Static methods
 
-| Method                                      | What it does                                                                        |
-| ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `Sorta11y.create(el, options?)`             | Enhance a `<ul>`/`<ol>` and return the instance.                                    |
-| `Sorta11y.get(el)`                          | Return the instance attached to an element, or `null`.                              |
-| `Sorta11y.autoInit(root?)`                  | Enhance every `[data-sorta11y]` list found under `root` (default: `document`).      |
-| `Sorta11y.fromSelect(select, options?)`     | Build a sortable list from a `<select multiple>` and keep it mirrored.              |
-| `Sorta11y.mirrorToSelect(evt, select)`      | Mirror an order into a hidden `<select multiple>` for plain form submits.           |
-| `Sorta11y.setDefaultLabels(labelsOrLocale)` | Set the global default announcement labels (an object or a registered locale name). |
+| Method                                      | What it does                                                                      |
+| ------------------------------------------- | --------------------------------------------------------------------------------- |
+| `Sorta11y.create(el, options?)`             | Enhance a `<ul>`/`<ol>` and return the instance.                                  |
+| `Sorta11y.get(el)`                          | Return the instance attached to an element, or `null`.                            |
+| `Sorta11y.autoInit(root?)`                  | Enhance every `[data-sorta11y]` list found under `root` (default: `document`).    |
+| `Sorta11y.fromSelect(select, options?)`     | Build a sortable list from a `<select multiple>` and keep it mirrored.            |
+| `Sorta11y.mirrorToSelect(evt, select)`      | Mirror an order into a hidden `<select multiple>` for plain form submits.         |
+| `Sorta11y.setDefaultLabels(labelsOrLocale)` | Set the default labels for lists created afterwards (an object or a locale name). |
 
 ### `create(el, options?)`
 
@@ -53,15 +53,22 @@ Accepts either an `onChange` event object or a bare array of ids, so it works
 from a callback and after a programmatic `sort()`. `select` may be an element or
 a selector; if either argument is missing, it does nothing.
 
+## Static properties
+
+- `Sorta11y.version` — the library version string, e.g. `"0.1.0-alpha.0"`.
+- `Sorta11y.locales` — the locale registry, keyed by language code. `en` is
+  always there; locale files add themselves when loaded — see
+  [Internationalisation](../guides/i18n.md).
+
 ## Instance methods
 
-| Method                  | What it does                                                              |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `refresh()`             | Re-resolve items and re-apply ARIA + tabindex after external DOM changes. |
-| `toArray()`             | Current order as an array of `data-id`s.                                  |
-| `sort(order, animate?)` | Reorder to the given array of ids, optionally with the slide animation.   |
-| `option(name, value?)`  | Read (1 argument) or live-update (2 arguments) an option.                 |
-| `destroy()`             | Remove all enhancements, listeners and ARIA wiring. Idempotent.           |
+| Method                  | What it does                                                               |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `refresh()`             | Re-resolve items and re-apply ARIA + tabindex after external DOM changes.  |
+| `toArray()`             | Current order as an array of ids (`dataIdAttr` values; `null` if missing). |
+| `sort(order, animate?)` | Reorder to the given array of ids — animated unless `animate` is `false`.  |
+| `option(name, value?)`  | Read (1 argument) or live-update (2 arguments) an option.                  |
+| `destroy()`             | Remove all enhancements, listeners and ARIA wiring. Idempotent.            |
 
 ### `refresh()`
 
@@ -106,8 +113,9 @@ list.sort(["c", "a", "b"]); // animated
 list.sort(["c", "a", "b"], false); // instant
 ```
 
-This is a programmatic reorder — it does **not** fire `onChange`, because nothing
-the user did caused it. Only items that are out of place are moved — a `sort()`
+This is a programmatic reorder — it does **not** fire `onChange` and announces
+nothing, because nothing the user did caused it. If screen-reader users need to
+know, tell them yourself. Only items that are out of place are moved — a `sort()`
 to the current order leaves the DOM untouched — and other children of the list
 after the items keep their place. Items not named in `order` follow the named
 ones in their current order, and unknown ids are ignored.

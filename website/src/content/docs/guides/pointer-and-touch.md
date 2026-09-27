@@ -53,6 +53,7 @@ restored, the cancel is announced and `onEnd` fires — when:
   outside the window),
 - the window loses focus — switching apps, or an `alert()` opening mid-drag —
   or the page is hidden (switching tabs),
+- a grab or drag starts in another sorta11y list — one at a time, page-wide,
 - the drag layer is torn down by `destroy()` or `option("pointer", false)`.
 
 If the app removes the dragged row and calls `refresh()` mid-drag, the drag

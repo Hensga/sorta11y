@@ -15,7 +15,7 @@ That is the whole stylesheet, near enough:
 | ------------------------ | ---------------------------------------------------------------------------------------- |
 | `.s11y-visually-hidden`  | Hides the live region and the keyboard-instructions element while keeping them announced |
 | `.s11y-item`             | `position: relative`, so a grabbed row can lift above its neighbours                     |
-| `.s11y-item--grabbed`    | `z-index: 1` during a keyboard grab                                                      |
+| `.s11y-item--grabbed`    | `z-index: 1` while an item is held (keyboard or tap pickup)                              |
 | `.s11y-item--dragging`   | `z-index: 1` during a pointer drag                                                       |
 | `prefers-reduced-motion` | Kills the slide transition on items                                                      |
 
@@ -33,10 +33,10 @@ visible content on the page.
 
 These two classes are the ones you actually design against:
 
-| Class                  | When it is on                  |
-| ---------------------- | ------------------------------ |
-| `.s11y-item--grabbed`  | a keyboard grab is active      |
-| `.s11y-item--dragging` | a pointer/touch drag is active |
+| Class                  | When it is on                            |
+| ---------------------- | ---------------------------------------- |
+| `.s11y-item--grabbed`  | an item is held (keyboard or tap pickup) |
+| `.s11y-item--dragging` | a pointer/touch drag is active           |
 
 A picked-up item **must** be visually distinguishable — otherwise sighted
 keyboard users have no idea what they are moving. A minimal, honest treatment:

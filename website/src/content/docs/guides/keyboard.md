@@ -9,14 +9,14 @@ item is picked up, moved while held, and then dropped or cancelled. There is no
 
 ## Keys
 
-| Key                                              | Idle (nothing held)               | While an item is held                 |
-| ------------------------------------------------ | --------------------------------- | ------------------------------------- |
-| <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Move focus between items          | Blocked — focus can't leave mid-grab  |
-| <kbd>Space</kbd>                                 | Pick the focused item up          | Drop it here                          |
-| <kbd>Enter</kbd>                                 | Pick up (handle only, see below)  | Drop it here (handle only)            |
-| <kbd>↑</kbd> / <kbd>↓</kbd>                      | Left to the browser (page scroll) | Move the held item one position       |
-| <kbd>Home</kbd> / <kbd>End</kbd>                 | Left to the browser               | Move the held item to the start / end |
-| <kbd>Esc</kbd>                                   | —                                 | Cancel and restore the original order |
+| Key                                              | Idle (nothing held)               | While an item is held                                                          |
+| ------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------ |
+| <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Move focus between items          | <kbd>Tab</kbd> is blocked; <kbd>Shift</kbd>+<kbd>Tab</kbd> cancels (see below) |
+| <kbd>Space</kbd>                                 | Pick the focused item up          | Drop it here                                                                   |
+| <kbd>Enter</kbd>                                 | Pick up (handle only, see below)  | Drop it here (handle only)                                                     |
+| <kbd>↑</kbd> / <kbd>↓</kbd>                      | Left to the browser (page scroll) | Move the held item one position                                                |
+| <kbd>Home</kbd> / <kbd>End</kbd>                 | Left to the browser               | Move the held item to the start / end                                          |
+| <kbd>Esc</kbd>                                   | —                                 | Cancel and restore the original order                                          |
 
 Every grab target is a **tab stop**, so <kbd>Tab</kbd> walks the list the way it
 walks any other set of controls. Idle arrow keys are deliberately _not_
@@ -53,9 +53,10 @@ button, a form field — are left to that control while nothing is held:
 
 Pressing any of the keys in the table above together with <kbd>Ctrl</kbd>,
 <kbd>Alt</kbd>, <kbd>Meta</kbd> or <kbd>Shift</kbd> while an item is held
-**cancels the grab** and restores the original order. The reasoning: a modified
-key is almost always a browser or screen-reader shortcut, and the user should
-not end up with a half-finished reorder because they triggered one.
+**cancels the grab** and restores the original order — <kbd>Shift</kbd>+<kbd>Tab</kbd>
+included. The reasoning: a modified key is almost always a browser or
+screen-reader shortcut, and the user should not end up with a half-finished
+reorder because they triggered one.
 
 ### Automatic cancel
 
@@ -68,8 +69,8 @@ A grab is also cancelled — original order restored, the cancel announced,
 - the page being hidden (switching tabs),
 - focus leaving the list — a dialog or a validation message taking it, say; the
   focus is left where it went,
-- a grab starting in another sorta11y list — only one item can be held at a
-  time, page-wide.
+- a grab or drag starting in another sorta11y list — only one item can be held
+  at a time, page-wide.
 
 Plain `scroll` events deliberately do not cancel a grab — see
 [Known limitations](../reference/limitations.md). A grab picked up with a
@@ -93,7 +94,7 @@ can be dropped with `announceTotal: false`, and every string is replaceable, see
 [Internationalisation](./i18n.md).
 
 The item's name comes from its `aria-label`, its `data-label`, or its trimmed
-text content — in that order.
+text content (without the handle's own text) — in that order.
 
 ## Scrolling
 
