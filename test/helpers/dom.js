@@ -36,16 +36,36 @@ export function makeList({
   return ul;
 }
 
-/** Dispatch a cancelable, bubbling keydown and return the event (for defaultPrevented). */
+// A real key goes to whatever holds focus, not to the element a test names —
+// and a grab moves focus onto the list, so the difference matters. Fall back
+// to the given target only when nothing in particular is focused.
+function keyTarget(fallback) {
+  const active = document.activeElement;
+  return active && active !== document.body ? active : fallback;
+}
+
+/**
+ * Press a key the way a browser delivers it and return the keydown (for
+ * defaultPrevented). The keydown goes to the focused element (`target` is the
+ * fallback when focus is on <body>). A focused native <button> whose keydown
+ * was not prevented activates like the engines do: Enter clicks on the
+ * keydown; Space clicks on the keyup, and only when the keyup lands on the
+ * same button (Chromium/WebKit/current Gecko track that via :active). A
+ * `repeat: true` press models a held key's auto-repeat: a keydown with no keyup.
+ */
 export function press(target, key, opts = {}) {
-  const ev = new KeyboardEvent("keydown", {
-    key,
-    bubbles: true,
-    cancelable: true,
-    ...opts,
-  });
-  target.dispatchEvent(ev);
-  return ev;
+  const init = { key, bubbles: true, cancelable: true, ...opts };
+  const el = keyTarget(target);
+  const down = new KeyboardEvent("keydown", init);
+  el.dispatchEvent(down);
+  const activates =
+    !down.defaultPrevented && el.tagName === "BUTTON" && !el.disabled;
+  if (activates && key === "Enter") activate(el);
+  if (opts.repeat) return down; // the key is still held: no keyup yet
+  const upEl = keyTarget(el);
+  upEl.dispatchEvent(new KeyboardEvent("keyup", init));
+  if (activates && key === SPACE && upEl === el) activate(el);
+  return down;
 }
 
 export const SPACE = " ";

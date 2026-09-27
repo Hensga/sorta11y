@@ -76,3 +76,75 @@ describe("sorta11y — public API", () => {
     expect(handle.getAttribute("aria-pressed")).toBe("false");
   });
 });
+
+// sort() moves only what is out of place: every re-append restarts the row's
+// CSS animations and hover state (and briefly detaches it).
+describe("sorta11y — sort() moves as little as possible", () => {
+  const movedBy = (ul, fn) => {
+    const mo = new MutationObserver(() => {});
+    mo.observe(ul, { childList: true });
+    fn();
+    const moved = new Set();
+    mo.takeRecords().forEach((r) =>
+      r.addedNodes.forEach((n) => moved.add(n.getAttribute("data-id"))),
+    );
+    mo.disconnect();
+    return [...moved].sort();
+  };
+
+  it("an unchanged order touches nothing", () => {
+    const ul = makeList();
+    const inst = create(ul);
+    expect(movedBy(ul, () => inst.sort(["a", "b", "c", "d"]))).toEqual([]);
+    expect(movedBy(ul, () => inst.sort(["a", "b", "c", "d"], false))).toEqual(
+      [],
+    );
+  });
+
+  it("one item out of place moves just that item", () => {
+    const ul = makeList();
+    const inst = create(ul);
+    expect(movedBy(ul, () => inst.sort(["b", "c", "d", "a"]))).toEqual(["a"]);
+    expect(domOrder(ul)).toEqual(["b", "c", "d", "a"]);
+    expect(movedBy(ul, () => inst.sort(["a", "b", "c", "d"]))).toEqual(["a"]);
+    expect(movedBy(ul, () => inst.sort(["a", "c", "d", "b"]))).toEqual(["b"]);
+    expect(domOrder(ul)).toEqual(["a", "c", "d", "b"]);
+  });
+
+  it("a full reversal still lands exactly, with items not named appended", () => {
+    const ul = makeList();
+    const inst = create(ul);
+    inst.sort(["d", "c", "b", "a"]);
+    expect(domOrder(ul)).toEqual(["d", "c", "b", "a"]);
+    inst.sort(["b"]);
+    expect(domOrder(ul)).toEqual(["b", "d", "c", "a"]);
+    expect(inst.toArray()).toEqual(["b", "d", "c", "a"]);
+  });
+
+  it("lands every permutation exactly (randomised), non-items staying last", () => {
+    const ul = makeList({ count: 6 });
+    const tailNote = document.createElement("div");
+    ul.appendChild(tailNote);
+    const inst = create(ul, { animation: 0 });
+    const ids = ["a", "b", "c", "d", "e", "f"];
+    let seed = 7; // deterministic LCG, so a failure is reproducible
+    const rand = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+    for (let n = 0; n < 60; n++) {
+      const want = ids.slice().sort(() => rand() - 0.5);
+      inst.sort(want);
+      expect(domOrder(ul)).toEqual(want);
+      expect(inst.toArray()).toEqual(want);
+      expect(ul.lastElementChild).toBe(tailNote);
+    }
+  });
+
+  it("keeps non-item children where they are", () => {
+    const ul = makeList();
+    const note = document.createElement("div"); // e.g. an empty-state row
+    ul.appendChild(note);
+    const inst = create(ul);
+    inst.sort(["b", "a", "c", "d"]);
+    expect(ul.lastElementChild).toBe(note);
+    expect(domOrder(ul)).toEqual(["b", "a", "c", "d"]);
+  });
+});

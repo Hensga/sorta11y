@@ -35,6 +35,10 @@
   // enlarges for WCAG 2.5.7/2.5.8.
   var TAP_SLOP = 10;
 
+  // ms past a slide's duration before its inline transition is dropped (see
+  // releaseSlideLater) — slack for a late first frame, not a visible delay.
+  var SLIDE_CLEANUP_GRACE = 50;
+
   // A click within this window after a pointerdown is treated as pointer-
   // originated (mouse/touch) and ignored by the keyboard-pickup path; a genuine
   // keyboard activation of a button has no recent pointerdown before it.
@@ -158,6 +162,86 @@
     return Array.prototype.slice.call(el.querySelectorAll(sel));
   }
 
+  // An element enhanced by a sorta11y instance (the registry, not the class
+  // name, so a stale or look-alike class cannot fake one).
+  function isSortableList(node) {
+    return !!node && node.nodeType === 1 && instances.has(node);
+  }
+
+  // Bring the start order of a live grab/drag in line with a refreshed item
+  // set: items that left drop out (a cancel restores this order, and must not
+  // re-append a removed row), items that joined keep the position the app
+  // gave them.
+  function reconcileOrder(start, current) {
+    var order = start.filter(function (it) {
+      return current.indexOf(it) !== -1;
+    });
+    current.forEach(function (it, i) {
+      if (order.indexOf(it) === -1)
+        order.splice(Math.min(i, order.length), 0, it);
+    });
+    return order;
+  }
+
+  // Rearrange the DOM from `items` (current order) to `wanted`, moving as few
+  // nodes as possible: every move detaches a row, restarting its CSS
+  // animations and hover state. The longest run already in the wanted
+  // relative order stays put; every other item is inserted before the next
+  // item in `wanted`, or — at the tail — before whatever followed the last
+  // item (so non-item children after the items keep their place).
+  function placeInOrder(items, wanted, list) {
+    var stays = longestIncreasingRun(
+      wanted.map(function (it) {
+        return items.indexOf(it);
+      }),
+    );
+    var last = items[items.length - 1];
+    var tailParent = last ? last.parentNode : list;
+    var tail = last ? last.nextSibling : null;
+    var next = null;
+    for (var i = wanted.length - 1; i >= 0; i--) {
+      if (!stays[i]) {
+        if (next) next.parentNode.insertBefore(wanted[i], next);
+        else tailParent.insertBefore(wanted[i], tail);
+      }
+      next = wanted[i];
+    }
+  }
+
+  // The positions (as a lookup) of one longest strictly increasing run in
+  // `seq` — O(n log n) patience sorting with back-links.
+  function longestIncreasingRun(seq) {
+    var tails = []; // tails[k]: index ending the smallest-tailed run of length k+1
+    var back = [];
+    for (var i = 0; i < seq.length; i++) {
+      var lo = 0;
+      var hi = tails.length;
+      while (lo < hi) {
+        var mid = (lo + hi) >> 1;
+        if (seq[tails[mid]] < seq[i]) lo = mid + 1;
+        else hi = mid;
+      }
+      back[i] = lo > 0 ? tails[lo - 1] : -1;
+      tails[lo] = i;
+    }
+    var run = {};
+    var k = tails.length ? tails[tails.length - 1] : -1;
+    for (; k !== -1; k = back[k]) run[k] = true;
+    return run;
+  }
+
+  // An element's aria-labelledby, if it names anything: per the accname spec
+  // it beats aria-label, but a reference to no existing element is ignored
+  // (and aria-label applies) — so copying a dangling one would name nothing.
+  function labelledByOf(el) {
+    var ids = el.getAttribute("aria-labelledby");
+    if (!ids || typeof document === "undefined") return null;
+    var named = ids.split(/\s+/).some(function (id) {
+      return !!id && !!document.getElementById(id);
+    });
+    return named ? ids : null;
+  }
+
   function getGrabTarget(item, options) {
     if (options.handle) {
       var h = item.querySelector(options.handle);
@@ -176,6 +260,107 @@
       if (h && h.textContent) text = text.replace(h.textContent, "");
     }
     return text.replace(/\s+/g, " ").trim();
+  }
+
+  // Accept an element or a selector string (resolved against the document).
+  function toElement(target) {
+    if (typeof target !== "string") return target;
+    return typeof document !== "undefined"
+      ? document.querySelector(target)
+      : null;
+  }
+
+  function activeElement() {
+    return typeof document !== "undefined" ? document.activeElement : null;
+  }
+
+  // Focus sits nowhere in particular: the browser dropped it to <body> (or
+  // cleared it) because the focused node was detached or removed.
+  function focusLost() {
+    var active = activeElement();
+    return !active || active === document.body;
+  }
+
+  // Whether a press landed on a scrollbar — such a press scrolls; it is no
+  // tap on the page. The page's scrollbar lies beyond the viewport's client
+  // area (the press targets the root element). A scroll container's lies in
+  // the band between its client box and its border — measured exactly, so
+  // a tap on the element's border is not taken for one (offsetX/Y count
+  // from the padding edge, clientWidth/Height stop before the scrollbar).
+  // Layout-less hosts (jsdom) report 0 sizes: never.
+  function onScrollbar(e) {
+    var t = e.target;
+    if (!t || t.nodeType !== 1) return false;
+    if (t === document.documentElement) {
+      return (
+        (t.clientWidth > 0 && e.clientX >= t.clientWidth) ||
+        (t.clientHeight > 0 && e.clientY >= t.clientHeight)
+      );
+    }
+    if (!t.clientWidth && !t.clientHeight) return false;
+    var cs = window.getComputedStyle(t);
+    var px = function (v) {
+      return parseFloat(v) || 0;
+    };
+    var barX =
+      t.offsetWidth -
+      t.clientWidth -
+      px(cs.borderLeftWidth) -
+      px(cs.borderRightWidth);
+    var barY =
+      t.offsetHeight -
+      t.clientHeight -
+      px(cs.borderTopWidth) -
+      px(cs.borderBottomWidth);
+    return (
+      (barX > 0 &&
+        e.offsetX >= t.clientWidth &&
+        e.offsetX < t.clientWidth + barX) ||
+      (barY > 0 &&
+        e.offsetY >= t.clientHeight &&
+        e.offsetY < t.clientHeight + barY)
+    );
+  }
+
+  // Whether focus sits on `el` or inside it.
+  function holdsFocus(el) {
+    var active = activeElement();
+    return !!active && el.contains(active);
+  }
+
+  // Restore/move focus without scrolling: the element did not move on the
+  // user's behalf, so the page must not jump to it.
+  function focusQuietly(el) {
+    if (el && typeof el.focus === "function") el.focus({ preventScroll: true });
+  }
+
+  // An inline `transition` is ours only for the length of a slide: left
+  // behind, it overrides the page's own CSS transitions on the item (a hover
+  // fade, the held state's colour or shadow), which would then snap. Drop it
+  // once the slide has had time to finish — together with the transform-immune
+  // box cached for pointer swap detection while the row is in flight — unless
+  // a newer slide on the same item has taken over by then (it re-stamps the
+  // token).
+  function releaseSlideLater(el, dur) {
+    var token = {};
+    el._s11ySlide = token;
+    setTimeout(function () {
+      if (el._s11ySlide !== token) return;
+      el._s11ySlide = null;
+      el._s11yRect = null; // landed — fall back to live rects
+      if (el.style.transition.indexOf("transform") === 0) {
+        el.style.transition = "";
+      }
+    }, dur + SLIDE_CLEANUP_GRACE);
+  }
+
+  // Scroll a moved item into view at its final position — minimally
+  // ("nearest"), and honouring the page's scroll-padding (a sticky header)
+  // and the item's scroll-margin, which a focus-scroll does not reliably do.
+  // Guarded: jsdom and very old engines have no scrollIntoView.
+  function revealItem(item) {
+    if (item && typeof item.scrollIntoView === "function")
+      item.scrollIntoView({ block: "nearest" });
   }
 
   function isModified(e) {
@@ -261,10 +446,21 @@
   }
 
   // Constructor ----------------------------------------------------------
-  function Sorta11y(el, options) {
-    if (!(this instanceof Sorta11y)) return new Sorta11y(el, options);
+  function Sorta11y(target, options) {
+    if (!(this instanceof Sorta11y)) return new Sorta11y(target, options);
+    // A selector string resolves like fromSelect/mirrorToSelect do — but here
+    // a miss throws: there is no list to enhance, and a silent null would
+    // only fail later and further from the typo.
+    var el = toElement(target);
+    if (typeof target === "string" && !el) {
+      throw new TypeError(
+        'sorta11y: create("' + target + '") matched no element.',
+      );
+    }
     if (!el || el.nodeType !== 1) {
-      throw new TypeError("sorta11y: create(el) requires a DOM element.");
+      throw new TypeError(
+        "sorta11y: create(el) requires a DOM element or a selector.",
+      );
     }
     var existing = instances.get(el);
     if (existing) return existing; // idempotent
@@ -275,11 +471,16 @@
     this._grabbed = null;
     this._startItems = null;
     this._startIndex = -1;
+    this._grabSource = null; // the input that picked the held item up
     this._addedListRole = false;
     this._appWrap = null; // permanent structural wrapper; role toggled per grab
     this._ptrStamp = null; // timeStamp of the last pointerdown (click disambiguation)
     this._ptrItem = null; // the item that pointerdown landed on (scopes the guard)
     this._autoCancelTypes = null;
+    this._spaceKeyupGrab = null; // handle refocused by a Space-keydown drop (see _guardSpaceKeyup)
+    this._spaceKeyupTimer = null;
+    this._keyClickGrab = null; // <button> handle a Space/Enter keydown is about to click
+    this._outsidePresses = null; // outside presses being judged during a tap hold
     this._destroyed = false;
     uid += 1;
     this._instructionsId = "s11y-instructions-" + uid;
@@ -287,6 +488,7 @@
     this._boundClick = this._onClick.bind(this);
     this._boundAutoCancel = this._onAutoCancel.bind(this);
     this._boundFocusOut = this._onFocusOut.bind(this);
+    this._boundSpaceKeyupGuard = this._onSpaceKeyupGuard.bind(this);
     this._ptr = null;
     this._boundPointerDown = this._onPointerDown.bind(this);
     this._boundPointerMove = this._onPointerMove.bind(this);
@@ -294,6 +496,7 @@
     this._boundPointerCancel = this._onPointerCancel.bind(this);
     this._boundPointerKeydown = this._onPointerKeydown.bind(this);
     this._boundPointerLostCapture = this._onPointerLostCapture.bind(this);
+    this._boundPointerAbandon = this._onPointerAbandon.bind(this);
 
     this._init();
     instances.set(el, this);
@@ -413,7 +616,9 @@
         // Move the list back to the wrapper's slot; the live region +
         // instructions already sit AFTER the wrapper (never inside it), so
         // removing the now-empty wrapper leaves them right after the list.
-        parent.insertBefore(this.el, wrap);
+        // Unless the page already took the list out (removed or moved it):
+        // then only the wrapper goes — never resurrect a removed list.
+        if (wrap.contains(this.el)) parent.insertBefore(this.el, wrap);
         parent.removeChild(wrap);
       }
       this._appWrap = null;
@@ -427,16 +632,17 @@
       if (on) {
         wrap.setAttribute("role", "application");
         // ARIA requires an application region to be named. Mirror the list's own
-        // name when it has one (aria-label first, then aria-labelledby), else
-        // fall back to the localisable default label. The wrapper is entirely
-        // ours, so setting/removing these attributes on it is always safe.
+        // name when it has one — in accname order: aria-labelledby (when it
+        // references something), then aria-label — else fall back to the
+        // localisable default label. The wrapper is entirely ours, so
+        // setting/removing these attributes on it is always safe.
         var el = this.el;
+        var labelledBy = labelledByOf(el);
         var ariaLabel = el.getAttribute("aria-label");
-        var labelledBy = el.getAttribute("aria-labelledby");
-        if (ariaLabel) {
-          wrap.setAttribute("aria-label", ariaLabel);
-        } else if (labelledBy) {
+        if (labelledBy) {
           wrap.setAttribute("aria-labelledby", labelledBy);
+        } else if (ariaLabel) {
+          wrap.setAttribute("aria-label", ariaLabel);
         } else {
           var fallback = this.labels && this.labels.applicationLabel;
           if (typeof fallback === "function") fallback = fallback({});
@@ -449,14 +655,6 @@
       }
     },
 
-    // Force a REAL focus event on the grab target even when it is already the
-    // active element (a plain focus() is a no-op then). NVDA/JAWS decide
-    // browse vs focus mode only when a focus event arrives, so this is what
-    // flips them into focus mode when role="application" appears mid-grab —
-    // and back towards browse mode after it is removed on drop. Safe against
-    // _onFocusOut: the blur's focusout has no relatedTarget, so that guard
-    // re-checks on a microtask, by which time focus is already back inside
-    // the widget.
     // Remove the grab-time tabindex from the list again — deferring while the
     // list still holds focus (dropping it to <body> would lose the user's
     // place; same shedding pattern as _cleanupItem). Only sheds what _grab
@@ -464,8 +662,7 @@
     _shedListTabindex: function () {
       var el = this.el;
       if (!this._elTabAdded) return;
-      var active =
-        typeof document !== "undefined" ? document.activeElement : null;
+      var active = activeElement();
       if (active === el) {
         var shed = function () {
           el.removeAttribute("tabindex");
@@ -494,8 +691,15 @@
       // drop/cancel/destroy cannot throw on a missing grab target and strand
       // role="application". Done by reference; the departing element's own
       // attributes are cleaned by the loop below (we do not touch them here).
+      var vanished = null;
       if (this._grabbed && current.indexOf(this._grabbed) === -1) {
         var gone = this._grabbed;
+        vanished = {
+          item: gone,
+          oldIndex: this._startIndex,
+          slot: prev.indexOf(gone), // where it sat when it vanished
+          source: this._grabSource,
+        };
         this._setAppMode(false); // release screen-reader focus mode up front
         this._removeAutoCancel();
         this._grabbed = null;
@@ -503,6 +707,22 @@
         this._startIndex = -1;
         if (currentGrab === this) currentGrab = null;
         this._stateClass(gone, CLASS.grabbed, this.options.grabbedClass, false);
+      } else if (this._grabbed) {
+        // The grab lives on, but other items came or went: a cancel restores
+        // this start order, and must not re-append a row the app removed.
+        this._startItems = reconcileOrder(this._startItems, current);
+        this._startIndex = this._startItems.indexOf(this._grabbed);
+      }
+      // The same for a live pointer press/drag — whose own item may be gone.
+      var ptr = this._ptr;
+      var dragGone = null;
+      var dragFocusSlot = -1; // where a vanished row's focus should go
+      if (ptr && current.indexOf(ptr.item) === -1) {
+        if (ptr.hadFocus) dragFocusSlot = prev.indexOf(ptr.item);
+        dragGone = this._abandonDrag(ptr) ? ptr : null;
+      } else if (ptr) {
+        ptr.startItems = reconcileOrder(ptr.startItems, current);
+        ptr.startIndex = ptr.startItems.indexOf(ptr.item);
       }
       // Strip ARIA/expandos from items that left the set, so the destroy
       // contract ("no orphaned attributes") holds for dynamic item sets too.
@@ -580,7 +800,71 @@
             item.addEventListener("dragstart", preventDefaultHandler);
         }
       });
+      // Finished only now, with the new items enhanced (a fresh item has no
+      // grab target before the loop above).
+      if (vanished) this._endVanishedGrab(vanished);
+      // A dragged row that held focus took it along: hand it on, as above.
+      if (dragFocusSlot !== -1 && focusLost()) this._focusSlot(dragFocusSlot);
+      if (dragGone) {
+        // A drag reported onStart, so it ends like a vanished keyboard grab.
+        this._fire(
+          "onEnd",
+          this._evt(dragGone.item, dragGone.startIndex, -1, "pointer"),
+        );
+      }
       return this;
+    },
+
+    // Hand focus to the item now in a vanished item's slot: the next one,
+    // else the new last (none left: nowhere to go).
+    _focusSlot: function (slot) {
+      var i = Math.min(slot, this.items.length - 1);
+      if (i >= 0) focusQuietly(this.items[i]._s11yGrab);
+    },
+
+    // The item under a live pointer press/drag left the set (the app removed
+    // or re-rendered it). Tear the gesture down WITHOUT _cancelPointer's
+    // revert, which would re-append the departed row: drop the listeners and
+    // the pointer capture, and — for a drag that had started — the single-
+    // drag lock and the list's user-select. (A placement tap's lock belongs to
+    // the held item, as in _cancelPointer; the row's own classes and styles go
+    // with _cleanupItem.) Returns whether a started drag was ended.
+    _abandonDrag: function (ptr) {
+      this._removePointerListeners();
+      this._ptr = null;
+      try {
+        if (ptr.grab && typeof ptr.grab.releasePointerCapture === "function")
+          ptr.grab.releasePointerCapture(ptr.pointerId);
+      } catch (err) {
+        /* no capture held (e.g. released along with the removed node) */
+      }
+      if (ptr.dropTap || !ptr.started) return false;
+      if (currentGrab === this) currentGrab = null;
+      this.el.style.userSelect = "";
+      return true;
+    },
+
+    // The held item left the set (the app removed or re-rendered it), so end
+    // the grab the way a drop/cancel would — minus what needs the item. Focus
+    // was parked on the list (or fell to <body> with the removed node): hand
+    // it to the item now in the vanished one's slot (the next one, else the
+    // new last), so the list's temporary tabindex can go at once instead of
+    // stranding the user on a bare <ul>; a focus that already left the widget
+    // is not stolen back. No dropped/cancelled announcement: the item is gone,
+    // so both would announce a false outcome at a nonsense "position 0" — the
+    // stale "Picked up…" text is cleared instead, the focus move announces
+    // where the user is now, and why the item vanished is the app's to say.
+    // onEnd reports newIndex -1 (no longer in the list); no onChange, since
+    // no reorder was committed.
+    _endVanishedGrab: function (vanished) {
+      if (activeElement() === this.el || focusLost())
+        this._focusSlot(vanished.slot);
+      this._shedListTabindex();
+      this.liveRegion.textContent = "";
+      this._fire(
+        "onEnd",
+        this._evt(vanished.item, vanished.oldIndex, -1, vanished.source),
+      );
     },
 
     // Remove every attribute, listener, class and expando this instance added
@@ -603,10 +887,7 @@
       // (still programmatically focusable) and shed it on its next blur. A
       // native <button> stays focusable without tabindex, so just remove it.
       if (grab.hasAttribute("tabindex")) {
-        var active =
-          typeof document !== "undefined" ? document.activeElement : null;
-        var holdsFocus = !!active && (grab === active || grab.contains(active));
-        if (holdsFocus && grab.tagName !== "BUTTON") {
+        if (holdsFocus(grab) && grab.tagName !== "BUTTON") {
           grab.setAttribute("tabindex", "-1");
           var shed = function () {
             grab.removeAttribute("tabindex");
@@ -636,6 +917,9 @@
       }
       delete item._s11yGrab;
       delete item._s11yRect;
+      // Void a pending slide cleanup (releaseSlideLater checks this token):
+      // the item is released, so a transition the page sets later is its own.
+      delete item._s11ySlide;
     },
 
     // Keyboard -----------------------------------------------------------
@@ -671,10 +955,27 @@
       if (isModified(e)) return;
       var item = this._itemFromEventTarget(e.target);
       if (!item || item._s11yGrab === item) return; // no-handle pickup is on Space
+      // The keyboard click an engine may fire on the keyup of the Space that
+      // just dropped this item from the list (see _guardSpaceKeyup).
+      if (this._spaceKeyupGrab === item._s11yGrab && e.detail === 0) {
+        this._clearSpaceKeyupGuard();
+        e.preventDefault();
+        return;
+      }
+      // The button's own KEYBOARD activation: a detail-0 click right after a
+      // Space/Enter keydown on this very button, with no pointer press in
+      // between (_onPointerDown clears the mark). Neither pointer sequence
+      // can produce that — a mouse/touch click has detail >= 1 and its own
+      // pointerdown, Blink's AT tap starts with a synthetic pointerdown and
+      // clicks with detail 1 — so it may pass the pointer guard below even
+      // within its window (Space on the handle right after tapping it).
+      var byKey = e.detail === 0 && this._keyClickGrab === item._s11yGrab;
+      this._keyClickGrab = null;
       // Ignore the click a recent pointerdown/up on THIS SAME item synthesised
       // (mouse, touch, or Blink's AT tap); an activation on another item — or
       // with no pointer history — is genuine and must get through.
       if (
+        !byKey &&
         this._ptrStamp != null &&
         this._ptrItem === item &&
         e.timeStamp - this._ptrStamp < POINTER_CLICK_GUARD_MS
@@ -703,14 +1004,33 @@
       // idle arrows/Home/End are left to the browser; only Space picks an item up.
       if (key === "SPACE") {
         if (isModified(e)) return; // modifiers abort the pickup
+        if (e.repeat) {
+          // A held key is ONE press. Its auto-repeat must not toggle again —
+          // holding Space through a drop would re-grab — and preventing it
+          // also keeps a repeat from arming a refocused button's native
+          // activation. A button pressed here directly is already armed by
+          // the first keydown, so its single click on release still comes.
+          e.preventDefault();
+          return;
+        }
         // A native <button> handle activates on Space and fires its own click
         // (which reaches us in browse mode) — so defer to that. Everything else
         // (no-handle item, or a non-<button> handle) is grabbed from the keydown.
-        if (isClickPickup(item)) return;
+        if (isClickPickup(item)) {
+          this._keyClickGrab = item._s11yGrab; // its click is keyboard-born
+          return;
+        }
         e.preventDefault();
         this._grab(item);
       } else if (key === "ENTER") {
-        if (isClickPickup(item)) return; // native button: let Enter activate it
+        if (e.repeat) {
+          e.preventDefault(); // a held Enter would re-activate the button per repeat
+          return;
+        }
+        if (isClickPickup(item)) {
+          this._keyClickGrab = item._s11yGrab; // native button: let Enter activate it
+          return;
+        }
         // A non-<button> handle promoted to role="button" is announced as a
         // button, so Enter must act like Space and grab it. A plain no-handle
         // <li> stays deliberately Enter-inert (never grabs, never submits).
@@ -724,27 +1044,43 @@
     },
 
     _handleGrabbedKey: function (e, key) {
+      var item = this._grabbed;
       if (isModified(e)) {
         e.preventDefault();
-        this._cancel();
+        this._cancel(false, true);
+        if (key === "SPACE") this._guardSpaceKeyup(item);
         return;
       }
-      // A native <button> handle drops through its own click too, so a single
-      // Space/Enter is one toggle (its keydown here + the ensuing click would
-      // otherwise both fire). Non-button handles and no-handle items have no
-      // synthetic click, so they must drop straight from the keydown.
-      var clickToggle = isClickPickup(this._grabbed);
+      // Holding Space/Enter is one press: its auto-repeat must not drop (and
+      // then re-grab via the refocused handle). Prevented so a held Space does
+      // not scroll the page. Arrow/Home/End repeats keep moving the item.
+      if (e.repeat && (key === "SPACE" || key === "ENTER")) {
+        e.preventDefault();
+        return;
+      }
+      // A native <button> handle drops through its own click — but only when
+      // the key actually lands ON that button (after a move, _reorder focuses
+      // it): then a single Space/Enter is one toggle, its keydown here + the
+      // ensuing click would otherwise both fire. Right after a pickup focus
+      // sits on the LIST (see _grab), so the keydown comes from the <ul>, no
+      // click follows it, and — like non-button handles and no-handle items,
+      // which have no synthetic click — the keydown itself must drop.
+      var clickToggle = isClickPickup(item) && e.target === item._s11yGrab;
+      if (clickToggle && (key === "SPACE" || key === "ENTER"))
+        this._keyClickGrab = item._s11yGrab; // its click is keyboard-born
       switch (key) {
         case "SPACE":
           if (clickToggle) return; // the button's click drops it
           e.preventDefault();
           this._drop();
+          this._guardSpaceKeyup(item);
           break;
         case "ENTER":
           if (clickToggle) return; // let Enter activate the button (click → drop)
-          // A promoted (non-<button>) handle drops on Enter, mirroring Space. A
-          // plain no-handle <li> stays Enter-inert (blocked) during the grab.
-          if (this._grabbed._s11yGrab !== this._grabbed) {
+          // A handle — a <button> reached from the list, or a promoted
+          // non-<button> — drops on Enter, mirroring Space. A plain no-handle
+          // <li> stays Enter-inert (blocked) during the grab.
+          if (item._s11yGrab !== item) {
             e.preventDefault();
             this._drop();
             break;
@@ -753,7 +1089,7 @@
           break;
         case "ESC":
           e.preventDefault();
-          this._cancel();
+          this._cancel(false, true);
           break;
         case "UP":
           e.preventDefault();
@@ -779,6 +1115,51 @@
       }
     },
 
+    // A Space keydown that ended a <button>-handle grab has just refocused
+    // that button (_drop/_cancel), and the key's keyup is still to come — on
+    // the button. Chromium/WebKit only activate a button on a Space keyup
+    // whose keydown armed it (:active), and current Gecko tracks the same
+    // thing, but older Gecko activated on ANY Space keyup: that click would
+    // re-grab the item the user just dropped. So swallow one keyboard click
+    // (detail 0) on that button until the keyup has settled. Armed ONLY from
+    // this keydown path, so a screen reader's browse-mode press (no keydown
+    // reaches the page, and its click is detail 1 anyway) is never affected.
+    _guardSpaceKeyup: function (item) {
+      if (!isClickPickup(item)) return; // only a <button> synthesises clicks
+      this._clearSpaceKeyupGuard();
+      this._spaceKeyupGrab = item._s11yGrab;
+      document.addEventListener("keyup", this._boundSpaceKeyupGuard, true);
+      document.addEventListener("keydown", this._boundSpaceKeyupGuard, true);
+    },
+
+    _onSpaceKeyupGuard: function (e) {
+      // A fresh press (e.g. a keyup lost to a window switch, then Space on the
+      // button) owns its own click — stop guarding before it arrives.
+      if (e.type === "keydown") {
+        if (!e.repeat) this._clearSpaceKeyupGuard();
+        return;
+      }
+      if (normalizeKey(e) !== "SPACE") return;
+      // The engine dispatches its keyup activation right AFTER this event's
+      // listeners, in the same task (a microtask would already be too late),
+      // so hold the guard until the next task.
+      document.removeEventListener("keyup", this._boundSpaceKeyupGuard, true);
+      document.removeEventListener("keydown", this._boundSpaceKeyupGuard, true);
+      var self = this;
+      this._spaceKeyupTimer = setTimeout(function () {
+        self._spaceKeyupTimer = null;
+        self._clearSpaceKeyupGuard();
+      }, 0);
+    },
+
+    _clearSpaceKeyupGuard: function () {
+      if (this._spaceKeyupTimer != null) clearTimeout(this._spaceKeyupTimer);
+      this._spaceKeyupTimer = null;
+      this._spaceKeyupGrab = null;
+      document.removeEventListener("keyup", this._boundSpaceKeyupGuard, true);
+      document.removeEventListener("keydown", this._boundSpaceKeyupGuard, true);
+    },
+
     // Toggle a state class on an item: the built-in hook plus an optional
     // consumer class (grabbedClass / draggingClass), which may be a space-
     // separated token list. Additive, so the library's own structural CSS on
@@ -793,11 +1174,14 @@
     },
 
     // Grab lifecycle -----------------------------------------------------
-    _grab: function (item) {
+    // `source` is the input that picked the item up: "keyboard" (a key or a
+    // handle activation, incl. a screen reader's) or "pointer" (a tap).
+    _grab: function (item, source) {
       if (this._ptr) return; // a pointer drag is in progress on this list
       if (currentGrab && currentGrab !== this) currentGrab._abort(true); // single-drag-lock (silent)
       if (this._grabbed) return;
       this._grabbed = item;
+      this._grabSource = source || "keyboard";
       this._startItems = this.items.slice(); // element refs — robust to missing/duplicate data-id
       this._startIndex = this.items.indexOf(item);
       currentGrab = this;
@@ -806,10 +1190,6 @@
       this._stateClass(item, CLASS.grabbed, this.options.grabbedClass, true);
       this._setAppMode(true); // screen-reader focus mode for the arrow keys
       this._addAutoCancel();
-      this._fire(
-        "onStart",
-        this._evt(item, this._startIndex, this._startIndex),
-      );
       // Move focus onto the LIST itself: a real, persistent focus change into
       // the fresh application region. Engines batch accessibility updates and
       // ship diffs, so a blur()+focus() of the same node nets out to nothing
@@ -824,11 +1204,23 @@
         this.el.setAttribute("tabindex", "-1");
         this._elTabAdded = true;
       }
-      this.el.focus();
+      // Without scrolling: the held item is where the user already is, and a
+      // jump would move a tapped handle out from under the pointer.
+      focusQuietly(this.el);
       this._announce("grabbed", item);
+      // Consumer code runs LAST, in every lifecycle step (here, _drop,
+      // _cancel): the library's own state, focus and tabindex are settled
+      // first, so a callback that throws cannot leave a half-done pickup —
+      // or, on release, a stranded tabindex/focus — and its exception still
+      // surfaces to the page untouched.
+      this._fire(
+        "onStart",
+        this._evt(item, this._startIndex, this._startIndex, this._grabSource),
+      );
     },
 
-    _drop: function () {
+    // `source` is the input that committed the drop (default "keyboard").
+    _drop: function (source) {
       var item = this._grabbed;
       if (!item) return; // nothing held (e.g. torn down by a refresh)
       var grab = item._s11yGrab;
@@ -844,16 +1236,21 @@
       this._stateClass(item, CLASS.grabbed, this.options.grabbedClass, false);
       if (grab && grab !== item) grab.setAttribute("aria-pressed", "false"); // handle only
       this._announce("dropped", item);
-      var evt = this._evt(item, oldIndex, newIndex);
-      if (newIndex !== oldIndex) this._fire("onChange", evt);
-      this._fire("onEnd", evt);
       // Focus back on the grab target — the second real focus move, now with
       // the application role gone, so the screen reader re-evaluates again.
-      if (grab) grab.focus();
+      // Before the callbacks (see _grab), so a throwing one cannot strand the
+      // list's tabindex — and a focus a callback moves elsewhere is kept. No
+      // scroll: a drop moves nothing (each move already revealed the item).
+      focusQuietly(grab);
       this._shedListTabindex();
+      var evt = this._evt(item, oldIndex, newIndex, source);
+      if (newIndex !== oldIndex) this._fire("onChange", evt);
+      this._fire("onEnd", evt);
     },
 
-    _cancel: function (silent) {
+    // `byKey`: the user cancelled from the keyboard (Escape / a modifier), as
+    // opposed to an auto-cancel (a press elsewhere, wheel, resize, …).
+    _cancel: function (silent, byKey) {
       if (!this._grabbed) return;
       var item = this._grabbed;
       var grab = item._s11yGrab;
@@ -869,19 +1266,38 @@
       var parent = this.el;
       var startItems = this._startItems;
       var self = this;
-      this._animateReorder(function () {
-        startItems.forEach(function (it) {
-          parent.appendChild(it);
+      // A restore that moves the item slides it back to a slot that may be out
+      // of view: on a keyboard cancel, reveal it there as a keyboard move does
+      // (see _reorder). Never on an auto-cancel — scrolling then would move
+      // the page under a pointer mid-click or fight a wheel — nor on a silent
+      // one: the user's focus is elsewhere now.
+      var restores =
+        !!byKey &&
+        startItems.some(function (it, i) {
+          return self.items[i] !== it;
         });
-        self.items = startItems.slice();
-      });
+      this._animateReorder(
+        function () {
+          startItems.forEach(function (it) {
+            parent.appendChild(it);
+          });
+          self.items = startItems.slice();
+        },
+        null,
+        restores ? item : null,
+      );
       this._stateClass(item, CLASS.grabbed, this.options.grabbedClass, false);
       if (grab && grab !== item) grab.setAttribute("aria-pressed", "false"); // handle only
       var idx = this.items.indexOf(item);
       this._announce("cancelled", item);
-      this._fire("onEnd", this._evt(item, startIndex, idx));
-      if (!silent && grab) grab.focus(); // silent when a competing grab cancels this one
+      // Silent when a competing grab cancels this one. Never a focus-scroll:
+      // after a reveal it would target the item's old, transformed spot, and
+      // on an auto-cancel it would fight the wheel or press that caused it.
+      if (grab && (restores || !silent)) focusQuietly(grab);
       this._shedListTabindex();
+      // A cancel is no input of its own (Escape, a press elsewhere, focus
+      // loss, another list's grab, …): it reports how the item was picked up.
+      this._fire("onEnd", this._evt(item, startIndex, idx, this._grabSource)); // last (see _grab)
     },
 
     // Movement -----------------------------------------------------------
@@ -913,13 +1329,50 @@
       order.splice(toIndex, 0, item);
       var parent = this.el;
       var self = this;
-      this._animateReorder(function () {
-        order.forEach(function (it) {
-          parent.appendChild(it); // moving an existing node keeps DOM + array in sync
-        });
-        self.items = order;
-      });
-      item._s11yGrab.focus(); // keep focus on the moved item
+      // Reveal the item at its new slot, then keep focus on it WITHOUT a
+      // focus-scroll: by now FLIP holds it (by transform) at its OLD, still
+      // visible spot, so the browser would compute that scroll against the
+      // old position, scroll nothing, and let the item slide out of view —
+      // past the viewport edge or under a sticky header.
+      this._animateReorder(
+        function () {
+          order.forEach(function (it) {
+            parent.appendChild(it); // moving an existing node keeps DOM + array in sync
+          });
+          self.items = order;
+        },
+        null,
+        item,
+      );
+      focusQuietly(item._s11yGrab);
+    },
+
+    // Run a DOM change that re-appends items without losing the focus inside
+    // the list. Moving a node with appendChild detaches it for a moment, and
+    // the browser drops a focus it held to <body>: after a pointer swap, a
+    // reverted drag or a sort() the keyboard user's place was gone, and mid-
+    // grab the leaves-the-widget cancel (_onFocusOut) even reverted the
+    // change. So remember the focused element and put it back — synchronously,
+    // in the same task, so assistive technology sees no focus change at all
+    // (engines coalesce a blur+refocus of one node into nothing) — only when
+    // the change actually lost it, never fighting a focus that went elsewhere.
+    // The keyboard _reorder/_cancel paths move focus explicitly instead.
+    _keepFocus: function (mutate) {
+      var active = activeElement();
+      var held = active && this.el.contains(active) ? active : null;
+      mutate();
+      if (held && held.isConnected && focusLost()) focusQuietly(held);
+    },
+
+    // Where the list's scrollable content starts, in viewport coordinates. An
+    // item's rect minus this is its position within the list — unchanged by
+    // scrolling the page or the list itself.
+    _contentOrigin: function () {
+      var box = this.el.getBoundingClientRect();
+      return {
+        left: box.left - (this.el.scrollLeft || 0),
+        top: box.top - (this.el.scrollTop || 0),
+      };
     },
 
     // FLIP: measure positions, apply the DOM change, then animate EVERY displaced
@@ -927,7 +1380,7 @@
     // its new one via `transform` (compositor-friendly). Honours
     // `prefers-reduced-motion` and `animation: 0`, and is a no-op without layout
     // (e.g. jsdom); the reorder itself is always applied synchronously.
-    _animateReorder: function (mutate, skip) {
+    _animateReorder: function (mutate, skip, reveal) {
       var dur = this.options.animation;
       if (
         !dur ||
@@ -935,22 +1388,52 @@
         typeof requestAnimationFrame === "undefined"
       ) {
         mutate();
+        revealItem(reveal);
         return;
       }
-      var self = this;
       var els = this.items.slice();
+      // First/Last are compared relative to the list's CONTENT origin (its box
+      // minus its own scroll offset), not the viewport: the reveal scroll
+      // between the two reads — of the page or of the list itself — must not
+      // look like movement, or every item would slide by the scroll distance.
+      var origin0 = this._contentOrigin();
       var firsts = els.map(function (el) {
         return el.getBoundingClientRect();
       });
       mutate();
+      // Last must be each item's NATURAL new box. Moves can come faster than
+      // the two frames below (a held arrow key), so an item may still carry
+      // the previous move's inverse transform or be mid-slide — measured as
+      // is, it would jump by that offset. Clearing the inline transform (and,
+      // via transition:none, any running slide) first fixes that; First was
+      // read above, so every slide still starts where the item visibly was.
+      // Only rows a previous slide touched can be in flight — the rest keep
+      // no inline transition, which would override the page's own CSS
+      // transitions on them. Writes, then reads, then writes: one forced
+      // layout, no thrashing.
+      var halted = [];
+      els.forEach(function (el) {
+        if (el === skip) return; // e.g. the pointer-controlled dragged item
+        if (!el.style.transform && !el.style.transition) return;
+        el.style.transition = "none";
+        el.style.transform = "";
+        halted.push(el);
+      });
+      // Reveal the moved item at its FINAL spot, before the inverse
+      // transforms put it back at the old one.
+      revealItem(reveal);
+      var origin1 = this._contentOrigin();
+      var lasts = els.map(function (el) {
+        return el === skip ? null : el.getBoundingClientRect();
+      });
       var easing = this.options.easing || "ease";
       var moved = [];
       els.forEach(function (el, i) {
-        if (el === skip) return; // e.g. the pointer-controlled dragged item
+        if (el === skip) return;
         var first = firsts[i];
-        var last = el.getBoundingClientRect();
-        var dx = first.left - last.left;
-        var dy = first.top - last.top;
+        var last = lasts[i];
+        var dx = first.left - origin0.left - (last.left - origin1.left);
+        var dy = first.top - origin0.top - (last.top - origin1.top);
         if (!dx && !dy) return; // unmoved (or no layout)
         // Cache the post-reorder, pre-transform (natural) box so pointer swap
         // detection reads a transform-immune position during the slide.
@@ -959,25 +1442,50 @@
         el.style.transform = "translate(" + dx + "px, " + dy + "px)";
         moved.push(el);
       });
+      // A row halted for the measurement that does not move now must not keep
+      // `transition: none` (it would pin the page's CSS transitions off). The
+      // reads above already applied its cleared transform, so this animates
+      // nothing.
+      halted.forEach(function (el) {
+        if (moved.indexOf(el) === -1) el.style.transition = "";
+      });
       if (!moved.length) return;
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          if (self._destroyed) return; // do not touch elements after teardown
-          moved.forEach(function (el) {
-            el.style.transition = "transform " + dur + "ms " + easing;
-            el.style.transform = "";
-            el._s11yRect = null; // slide finished — fall back to live rects
-          });
-        });
+      // Play at once, in this task: flush the inverted state, then transition
+      // back to rest. Waiting frames instead lets a held arrow key — faster
+      // than two frames — re-measure the still-unmoved item on every press and
+      // restart the wait: it froze (drifting off-screen as each reveal
+      // scrolled on) and then jumped the whole distance. Same flush as
+      // _cancelPointer's; one read covers every row.
+      void moved[0].getBoundingClientRect();
+      moved.forEach(function (el) {
+        el.style.transition = "transform " + dur + "ms " + easing;
+        el.style.transform = "";
+        releaseSlideLater(el, dur); // also drops _s11yRect when it lands
       });
     },
 
     // Auto-cancel: any competing interaction abandons the keyboard drag.
     // (Plain 'scroll' is deliberately excluded — programmatic focus can scroll
     //  the page and would falsely cancel; 'wheel' covers intentional scrolling.)
+    // A TAP pickup is spared wheel and resize: tap-to-place (WCAG 2.5.7) has to
+    // scroll to reach a far target — with the wheel, or on mobile with a touch
+    // scroll that collapses the URL bar and fires `resize`. A keyboard user has
+    // the arrow keys instead, so for a keyboard grab scrolling away still ends
+    // it. Focus loss and a hidden tab cancel either kind; a press outside
+    // cancels a keyboard grab at once, a tap hold only once it proves to be a
+    // tap (see _judgeOutsidePress) — so a touch scroll that STARTS outside
+    // does not end it. A tap hold comes from Pointer Events, so it listens to
+    // those alone: the mousedown/touchstart a press also fires are echoes of
+    // the same gesture and must not cancel before it is judged.
     _addAutoCancel: function () {
       var self = this;
-      var types = ["pointerdown", "mousedown", "touchstart", "wheel", "resize"];
+      var types;
+      if (this._grabSource === "pointer") {
+        types = ["pointerdown", "pointermove", "pointerup", "pointercancel"];
+        this._outsidePresses = {}; // pointerId -> where an outside press began
+      } else {
+        types = ["pointerdown", "mousedown", "touchstart", "wheel", "resize"];
+      }
       types.forEach(function (t) {
         var tgt = t === "resize" || t === "wheel" ? window : document;
         tgt.addEventListener(t, self._boundAutoCancel, true);
@@ -1010,6 +1518,7 @@
       );
       this.el.removeEventListener("focusout", this._boundFocusOut);
       this._autoCancelTypes = null;
+      this._outsidePresses = null;
     },
 
     _onAutoCancel: function (e) {
@@ -1017,8 +1526,8 @@
       // reaching for the held item — to drop it with a tap (WCAG 2.5.7), or move
       // between its items — not a competing interaction, so it must not cancel.
       // The pointer path decides what that gesture means. Presses OUTSIDE the
-      // widget, and non-press signals (wheel / resize / tab-away / hidden), still
-      // abandon the grab.
+      // widget, and non-press signals (tab-away / hidden; wheel / resize for a
+      // keyboard grab — see _addAutoCancel), still abandon the grab.
       if (
         e &&
         (e.type === "pointerdown" ||
@@ -1028,7 +1537,50 @@
         var t = e.target;
         if (t && this.el.contains(t)) return;
       }
+      if (this._outsidePresses && e && /^pointer/.test(e.type)) {
+        this._judgeOutsidePress(e);
+        return;
+      }
       this._cancel();
+    },
+
+    // A press outside the widget during a TAP hold is judged by how it ENDS.
+    // Released in place — a tap or click elsewhere — it is the user letting go
+    // of the hold: cancel. Taken over by the browser (pointercancel: a touch
+    // scroll), moved beyond the tap slop, or on a scrollbar, it is scrolling
+    // to reach a far drop target — which tap-to-place (WCAG 2.5.7) needs — so
+    // the hold stays. Tracked per pointerId, so a second finger is judged on
+    // its own; the map goes with the hold (_removeAutoCancel).
+    _judgeOutsidePress: function (e) {
+      var presses = this._outsidePresses;
+      var id = e.pointerId;
+      if (e.type === "pointerdown") {
+        if (!onScrollbar(e)) presses[id] = { x: e.clientX, y: e.clientY };
+        return;
+      }
+      var start = presses[id];
+      if (!start) return; // a press that began inside, or on a scrollbar
+      if (e.type === "pointermove") {
+        if (
+          Math.abs(e.clientX - start.x) >= TAP_SLOP ||
+          Math.abs(e.clientY - start.y) >= TAP_SLOP
+        )
+          delete presses[id]; // scrolling (e.g. a scrollbar-thumb drag)
+        return;
+      }
+      delete presses[id];
+      if (e.type !== "pointerup") return;
+      // A real tap outside releases the hold. The press is the user's: cancel
+      // without the scrolling focus steal-back — on touch this runs BEFORE the
+      // tap's compatibility mousedown/click, so scrolling back to the list here
+      // would move the page under the finger and the click could miss. Only if
+      // focus is left on the list itself (whose temporary tabindex the cancel
+      // sheds) or fell to <body>, park it on the grab target, quietly.
+      var grab = this._grabbed && this._grabbed._s11yGrab;
+      this._cancel(true);
+      if (grab && (focusLost() || activeElement() === this.el)) {
+        focusQuietly(grab);
+      }
     },
 
     // Cancel the grab when focus leaves the widget, but not when it moves
@@ -1048,8 +1600,7 @@
       var self = this;
       Promise.resolve().then(function () {
         if (!self._grabbed) return; // already resolved elsewhere
-        var active =
-          typeof document !== "undefined" ? document.activeElement : null;
+        var active = activeElement();
         if (!active || !el.contains(active)) self._cancel(true);
       });
     },
@@ -1067,6 +1618,7 @@
     // Listeners live on `document` for the duration so the drag survives the
     // pointer leaving the element.
     _onPointerDown: function (e) {
+      this._keyClickGrab = null; // pointer activity: clicks are the guard's again
       if (this._ptr) return;
       if (e.button != null && e.button !== 0) return; // primary button / touch only
       var item = this._itemFromEventTarget(e.target);
@@ -1117,6 +1669,10 @@
         startItems: this.items.slice(),
         startIndex: this.items.indexOf(item),
         pointerId: e.pointerId,
+        // Whether the row holds focus — so a refresh() that removes it can
+        // hand that focus on. Rechecked when the drag starts: the mousedown
+        // after this pointerdown is what focuses a handle button.
+        hadFocus: holdsFocus(item),
       };
       // Capture the pointer on the grab target so a release off-page/off-element
       // still reaches us; pair it with a lostpointercapture listener so a broken
@@ -1144,6 +1700,17 @@
         true,
       );
       document.addEventListener("keydown", this._boundPointerKeydown, true);
+      // The safety net the keyboard grab has in _addAutoCancel: the window
+      // losing focus (an alert(), an app switch) or the tab going hidden can
+      // swallow the release — capture or not — and strand the drag. (A bubble
+      // listener on window: element blurs do not bubble, so a swap that
+      // re-appends the focused row cannot trip it.)
+      window.addEventListener("blur", this._boundPointerAbandon);
+      document.addEventListener("visibilitychange", this._boundPointerAbandon);
+    },
+
+    _onPointerAbandon: function () {
+      this._cancelPointer();
     },
 
     _onPointerMove: function (e) {
@@ -1177,6 +1744,7 @@
         if (currentGrab && currentGrab !== this) currentGrab._abort(true); // single-drag-lock
         currentGrab = this;
         ptr.started = true;
+        ptr.hadFocus = ptr.hadFocus || holdsFocus(ptr.item);
         this._stateClass(
           ptr.item,
           CLASS.dragging,
@@ -1241,13 +1809,16 @@
       var parent = this.el;
       var self = this;
       // Animate the displaced neighbours, but skip the dragged item — it is
-      // pointer-controlled and must not fight the FLIP transform.
-      this._animateReorder(function () {
-        order.forEach(function (it) {
-          parent.appendChild(it);
-        });
-        self.items = order;
-      }, item);
+      // pointer-controlled and must not fight the FLIP transform. The swap
+      // re-appends the dragged row, whose handle the mousedown just focused.
+      this._keepFocus(function () {
+        self._animateReorder(function () {
+          order.forEach(function (it) {
+            parent.appendChild(it);
+          });
+          self.items = order;
+        }, item);
+      });
     },
 
     _onPointerUp: function (e) {
@@ -1319,17 +1890,18 @@
     // nothing is held, drop in place when the held item is tapped again, or move
     // the held item to a different tapped item's slot and drop. Reusing _grab /
     // _drop gives taps the same announcements, focus mode and callbacks as the
-    // keyboard path. Called from _ptrFinish after _ptr is already cleared, so the
-    // _grab/_ptr guards do not fire.
+    // keyboard path — reported with source "pointer", as a drag is. Called from
+    // _ptrFinish after _ptr is already cleared, so the _grab/_ptr guards do not
+    // fire.
     _ptrTapToggle: function (item) {
       if (!this._grabbed) {
-        this._grab(item);
+        this._grab(item, "pointer");
       } else if (this._grabbed === item) {
-        this._drop();
+        this._drop("pointer");
       } else {
         // Another item is held: move it to the tapped item's slot, then drop.
         this._reorder(this._grabbed, this.items.indexOf(item));
-        this._drop();
+        this._drop("pointer");
       }
     },
 
@@ -1384,40 +1956,37 @@
       var startItems = ptr.startItems;
       var self = this;
       // Where the item sits on screen right now (its lifted/dragged position).
-      var visualTop = ptr.started ? item.getBoundingClientRect().top : 0;
-      this._animateReorder(function () {
-        startItems.forEach(function (it) {
-          parent.appendChild(it);
-        });
-        self.items = startItems.slice();
-      }, item);
-      if (ptr.started) {
-        // The revert moved the item's slot; re-anchor its transform to the same
-        // on-screen spot so the settle animates from where the finger left it.
-        var naturalTop = item.getBoundingClientRect().top - ptr.dy;
-        item.style.transition = "none";
-        item.style.transform = "translateY(" + (visualTop - naturalTop) + "px)";
-      }
+      var visualTop = item.getBoundingClientRect().top;
+      this._keepFocus(function () {
+        self._animateReorder(function () {
+          startItems.forEach(function (it) {
+            parent.appendChild(it);
+          });
+          self.items = startItems.slice();
+        }, item);
+      });
+      // The revert moved the item's slot; re-anchor its transform to the same
+      // on-screen spot so the settle animates from where the finger left it.
+      var naturalTop = item.getBoundingClientRect().top - ptr.dy;
+      item.style.transition = "none";
+      item.style.transform = "translateY(" + (visualTop - naturalTop) + "px)";
+      // Flush: commit the re-anchor transform as the transition's START
+      // value. Without a style/layout read the browser coalesces it with
+      // _settle's writes below and the item snaps instead of gliding (the
+      // handoff _animateReorder gets from its double rAF).
+      void item.getBoundingClientRect();
       this._settle(item);
-      if (ptr.started) {
-        this._stateClass(
-          item,
-          CLASS.dragging,
-          this.options.draggingClass,
-          false,
-        );
-        if (ptr.grab !== ptr.item)
-          ptr.grab.setAttribute("aria-pressed", "false"); // handle only
-        this.el.style.userSelect = "";
-        // Announce the aborted drag: the order was reverted above, so the item's
-        // position now reads as its original slot. Matches the keyboard cancel
-        // and keeps the README's "announces every change" promise honest.
-        this._announce("cancelled", item);
-        this._fire(
-          "onEnd",
-          this._evt(item, ptr.startIndex, this.items.indexOf(item), "pointer"),
-        );
-      }
+      this._stateClass(item, CLASS.dragging, this.options.draggingClass, false);
+      if (ptr.grab !== ptr.item) ptr.grab.setAttribute("aria-pressed", "false"); // handle only
+      this.el.style.userSelect = "";
+      // Announce the aborted drag: the order was reverted above, so the item's
+      // position now reads as its original slot. Matches the keyboard cancel
+      // and keeps the README's "announces every change" promise honest.
+      this._announce("cancelled", item);
+      this._fire(
+        "onEnd",
+        this._evt(item, ptr.startIndex, this.items.indexOf(item), "pointer"),
+      );
     },
 
     _removePointerListeners: function () {
@@ -1434,6 +2003,11 @@
         true,
       );
       document.removeEventListener("keydown", this._boundPointerKeydown, true);
+      window.removeEventListener("blur", this._boundPointerAbandon);
+      document.removeEventListener(
+        "visibilitychange",
+        this._boundPointerAbandon,
+      );
     },
 
     // Slide the lifted item back into its slot (instant under reduced-motion).
@@ -1447,6 +2021,7 @@
       item.style.transition =
         "transform " + dur + "ms " + (this.options.easing || "ease");
       item.style.transform = "";
+      releaseSlideLater(item, dur);
     },
 
     // Announcements ------------------------------------------------------
@@ -1490,12 +2065,16 @@
 
     // Resolve the owning item by walking ancestors and matching only against
     // *registered* grab targets — a stray nested [role="button"] is ignored
-    // rather than swallowing the keystroke.
+    // rather than swallowing the keystroke. The walk never climbs out of a
+    // NESTED sorta11y list: in a no-handle outer list it would reach the outer
+    // item holding it, and a key, press or click meant for the inner list (or
+    // the drop keydown bubbling from the inner <ul>) would grab that too.
     _itemFromEventTarget: function (node) {
       while (node && node !== this.el) {
         for (var i = 0; i < this.items.length; i++) {
           if (this.items[i]._s11yGrab === node) return this.items[i];
         }
+        if (isSortableList(node)) return null;
         node = node.parentNode;
       }
       return null;
@@ -1511,7 +2090,7 @@
         if (isInteractiveNode(node)) return null;
         // Never walk out of a NESTED sorta11y list: a press inside it belongs
         // to that list, not to this item.
-        if (node.classList && node.classList.contains(CLASS.list)) return null;
+        if (isSortableList(node)) return null;
         node = node.parentNode;
       }
       return null;
@@ -1533,26 +2112,25 @@
         self.items.forEach(function (item) {
           byId[item.getAttribute(attr)] = item;
         });
-        var parent = self.el;
         var newItems = [];
         (order || []).forEach(function (id) {
           var item = byId[id];
-          if (item && newItems.indexOf(item) === -1) {
-            parent.appendChild(item);
-            newItems.push(item);
-          }
+          if (item && newItems.indexOf(item) === -1) newItems.push(item);
         });
         // Append any items not named in `order`, preserving them safely.
         self.items.forEach(function (item) {
-          if (newItems.indexOf(item) === -1) {
-            parent.appendChild(item);
-            newItems.push(item);
-          }
+          if (newItems.indexOf(item) === -1) newItems.push(item);
         });
+        placeInOrder(self.items, newItems, self.el);
         self.items = newItems;
       };
-      if (animate === false) run();
-      else this._animateReorder(run);
+      // A moved item is detached for a moment, which would drop its focus to
+      // <body> — and mid-grab trip the leaves-the-widget cancel, reverting
+      // this very sort.
+      this._keepFocus(function () {
+        if (animate === false) run();
+        else self._animateReorder(run);
+      });
       return this;
     },
 
@@ -1609,12 +2187,12 @@
       this.el.removeEventListener("click", this._boundClick);
       this.el.removeEventListener("pointerdown", this._boundPointerDown);
       this._removeAutoCancel();
+      this._clearSpaceKeyupGuard();
       var self = this;
       // Remember a focus inside the list: _cleanupItem anchors it at
       // tabindex="-1", but the _unwrapApplication reparent below still blurs it
       // to <body>, so we restore it afterwards.
-      var active =
-        typeof document !== "undefined" ? document.activeElement : null;
+      var active = activeElement();
       var refocus = active && this.el.contains(active) ? active : null;
       this.items.forEach(function (item) {
         self._cleanupItem(item);
@@ -1638,9 +2216,7 @@
       // the reparent, so re-anchor a non-<button> target at tabindex="-1" (shed
       // again on its next blur) to keep it focusable.
       if (refocus && refocus.isConnected && typeof document !== "undefined") {
-        var lost =
-          !document.activeElement || document.activeElement === document.body;
-        if (lost && typeof refocus.focus === "function") {
+        if (focusLost() && typeof refocus.focus === "function") {
           if (
             refocus.tagName !== "BUTTON" &&
             !refocus.hasAttribute("tabindex")
@@ -1652,7 +2228,7 @@
             };
             refocus.addEventListener("blur", shed);
           }
-          refocus.focus();
+          focusQuietly(refocus); // teardown moved nothing on the user's behalf
         }
       }
       instances.delete(this.el);
@@ -1712,12 +2288,7 @@
   // option nodes. Accepts an event ({ order }) or a bare order array, and a
   // selector or a <select> element. Graceful no-op if either is missing.
   Sorta11y.mirrorToSelect = function (evt, select) {
-    var el =
-      typeof select === "string"
-        ? typeof document !== "undefined"
-          ? document.querySelector(select)
-          : null
-        : select;
+    var el = toElement(select);
     var order = Array.isArray(evt) ? evt : evt && evt.order;
     if (!el || !order) return el || null;
     var byValue = {};
@@ -1730,6 +2301,35 @@
     });
     return el;
   };
+
+  // Give the generated list the name the <select> had, however the page named
+  // it — else the list is announced unnamed. Precedence: an explicit `label`
+  // option, then — in accname order — the select's aria-labelledby (copied as
+  // a reference: the labelling elements stay in the DOM; ignored when it
+  // references nothing), its aria-label, and the standard <label for> /
+  // wrapping <label> (its text: that label would otherwise point at the
+  // now-hidden select).
+  function nameListLikeSelect(ul, select, explicit) {
+    var labelledBy = !explicit && labelledByOf(select);
+    if (labelledBy) {
+      ul.setAttribute("aria-labelledby", labelledBy);
+      return;
+    }
+    var name = explicit || select.getAttribute("aria-label");
+    if (!name && select.labels && select.labels.length) {
+      // A wrapping <label> contains the select itself — its option texts are
+      // not part of the name, so read a copy without it.
+      var copy = select.labels[0].cloneNode(true);
+      Array.prototype.forEach.call(
+        copy.querySelectorAll("select"),
+        function (s) {
+          s.parentNode.removeChild(s);
+        },
+      );
+      name = (copy.textContent || "").replace(/\s+/g, " ").trim();
+    }
+    if (name) ul.setAttribute("aria-label", name);
+  }
 
   // The mirror image of mirrorToSelect: build a sortable <ul> from a
   // `<select multiple>`, enhance it, and keep the (now hidden) select in sync so
@@ -1755,16 +2355,12 @@
   //   keepSelected — keep every <option> selected so a plain submit carries them
   //                  all in order (default true)
   //   listClass    — class for the generated <ul>
-  //   label        — aria-label for the <ul> (default: the select's aria-label)
+  //   label        — aria-label for the <ul> (default: the select's own name —
+  //                  see nameListLikeSelect)
   // Returns the Sorta11y instance (its `.el` is the new <ul>, `.sourceSelect`
   // the original select), or null if the target is not a <select>.
   Sorta11y.fromSelect = function (select, options) {
-    var el =
-      typeof select === "string"
-        ? typeof document !== "undefined"
-          ? document.querySelector(select)
-          : null
-        : select;
+    var el = toElement(select);
     if (!el || el.tagName !== "SELECT" || typeof document === "undefined")
       return null;
 
@@ -1777,8 +2373,7 @@
 
     var ul = document.createElement("ul");
     if (o.listClass) ul.className = o.listClass;
-    var name = o.label || el.getAttribute("aria-label");
-    if (name) ul.setAttribute("aria-label", name);
+    nameListLikeSelect(ul, el, o.label);
 
     Array.prototype.forEach.call(el.options, function (opt) {
       if (keepSelected) opt.selected = true;

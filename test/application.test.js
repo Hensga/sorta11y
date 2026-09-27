@@ -207,6 +207,10 @@ describe("sorta11y — application role (screen-reader focus mode)", () => {
 
   it("names the application wrapper via aria-labelledby when the list uses one", () => {
     const ul = makeList();
+    const heading = document.createElement("h2");
+    heading.id = "heading-x";
+    heading.textContent = "Order";
+    document.body.prepend(heading);
     ul.removeAttribute("aria-label");
     ul.setAttribute("aria-labelledby", "heading-x");
     inst = Sorta11y.create(ul, { labels: LABELS });
@@ -218,6 +222,36 @@ describe("sorta11y — application role (screen-reader focus mode)", () => {
     expect(wrap.getAttribute("aria-label")).toBeNull();
     press(first, SPACE);
     expect(wrap.getAttribute("aria-labelledby")).toBeNull();
+  });
+
+  // accname: aria-labelledby beats aria-label — but a reference to nothing
+  // names nothing, and then aria-label (or the default) applies.
+  it("aria-labelledby beats aria-label on the wrapper; a dangling one is ignored", () => {
+    const heading = document.createElement("h2");
+    heading.id = "real-heading";
+    heading.textContent = "Order";
+    document.body.appendChild(heading);
+    const ul = makeList(); // aria-label="Test list"
+    ul.setAttribute("aria-labelledby", "missing real-heading");
+    inst = Sorta11y.create(ul, { labels: LABELS });
+    const wrap = ul.parentElement;
+    const first = ul.children[0];
+    first.focus();
+    press(first, SPACE);
+    expect(wrap.getAttribute("aria-labelledby")).toBe("missing real-heading");
+    expect(wrap.getAttribute("aria-label")).toBeNull();
+    press(first, SPACE);
+    ul.setAttribute("aria-labelledby", "missing"); // now dangling
+    first.focus();
+    press(first, SPACE);
+    expect(wrap.getAttribute("aria-labelledby")).toBeNull();
+    expect(wrap.getAttribute("aria-label")).toBe("Test list");
+    press(first, SPACE);
+    ul.removeAttribute("aria-label"); // dangling reference, nothing else
+    first.focus();
+    press(first, SPACE);
+    expect(wrap.getAttribute("aria-labelledby")).toBeNull();
+    expect(wrap.getAttribute("aria-label")).toBe("Sortable list");
   });
 
   it("falls back to the localisable default name when the list is unnamed", () => {

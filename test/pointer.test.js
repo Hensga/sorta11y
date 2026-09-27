@@ -1238,3 +1238,685 @@ describe("sorta11y — assistive-technology activation clicks", () => {
     expect(ul.children[0].classList.contains("s11y-item--grabbed")).toBe(false);
   });
 });
+
+// A tap is a pointer interaction: the grab model it toggles must report
+// source "pointer" (the README documents 'keyboard' | 'pointer'). Drops name
+// the input that committed them; a cancel is not an input of its own (Escape,
+// a click elsewhere, focus loss, …), so it reports how the item was picked up.
+describe("sorta11y — tap-to-reorder reports source: 'pointer'", () => {
+  const setup = () => {
+    const ul = makeList();
+    const cb = { onStart: vi.fn(), onChange: vi.fn(), onEnd: vi.fn() };
+    const inst = track(Sorta11y.create(ul, { animation: 0, ...cb }));
+    fakeLayout(ul);
+    const tap = (i) => {
+      pdown(ul.children[i], i * 20 + 10);
+      pup();
+    };
+    const src = (fn) => fn.mock.calls.map((c) => c[0].source);
+    return { ul, inst, tap, src, ...cb };
+  };
+
+  it("tap pickup + tap on the same item: onStart/onEnd report 'pointer'", () => {
+    const { tap, src, onStart, onEnd } = setup();
+    tap(0);
+    tap(0);
+    expect(src(onStart)).toEqual(["pointer"]);
+    expect(src(onEnd)).toEqual(["pointer"]);
+  });
+
+  it("tap pickup + tap placement: onChange/onEnd report 'pointer'", () => {
+    const { inst, tap, src, onChange, onEnd } = setup();
+    tap(0);
+    tap(2); // move a into c's slot, then drop
+    expect(inst.toArray()).toEqual(["b", "c", "a", "d"]);
+    expect(src(onChange)).toEqual(["pointer"]);
+    expect(src(onEnd)).toEqual(["pointer"]);
+  });
+
+  it("a tap pickup dropped with Space reports the keyboard drop", () => {
+    const { ul, tap, src, onStart, onChange } = setup();
+    tap(0);
+    press(ul, "ArrowDown");
+    press(ul, SPACE);
+    expect(src(onStart)).toEqual(["pointer"]);
+    expect(src(onChange)).toEqual(["keyboard"]);
+  });
+
+  it("a keyboard pickup placed by a tap reports the pointer drop", () => {
+    const { ul, tap, src, onStart, onChange } = setup();
+    ul.children[0].focus();
+    press(ul.children[0], SPACE);
+    tap(2);
+    expect(src(onStart)).toEqual(["keyboard"]);
+    expect(src(onChange)).toEqual(["pointer"]);
+  });
+
+  it("cancelling a tap pickup reports how it was picked up", () => {
+    const { ul, tap, src, onEnd } = setup();
+    tap(0);
+    press(ul, "Escape");
+    expect(src(onEnd)).toEqual(["pointer"]);
+    ul.children[0].focus();
+    press(ul.children[0], SPACE);
+    press(ul, "Escape");
+    expect(src(onEnd)).toEqual(["pointer", "keyboard"]);
+  });
+
+  it("a tap pickup whose item vanishes (refresh) reports 'pointer'", () => {
+    const { ul, inst, tap, src, onEnd } = setup();
+    tap(1);
+    ul.children[1].remove();
+    inst.refresh();
+    expect(src(onEnd)).toEqual(["pointer"]);
+  });
+});
+
+// The keyboard grab auto-cancels on competing interactions; a pointer drag
+// relied on pointerup/pointercancel/lostpointercapture alone. The window
+// losing focus mid-drag (an alert(), an app switch) or the tab going hidden
+// can swallow the release — the drag must not stay stuck.
+describe("sorta11y — pointer drag safety net (window blur / hidden tab)", () => {
+  const startDrag = (options = {}) => {
+    const ul = makeList();
+    const onEnd = vi.fn();
+    const inst = track(
+      Sorta11y.create(ul, { animation: 0, labels: LABELS, onEnd, ...options }),
+    );
+    fakeLayout(ul);
+    const a = ul.children[0];
+    pdown(a, 10);
+    pmove(16);
+    pmove(32); // [b, a, c, d]
+    return { ul, inst, a, onEnd };
+  };
+
+  it("a window blur mid-drag cancels it: order reverted, drag cleared, announced", () => {
+    const { ul, inst, a, onEnd } = startDrag();
+    expect(inst.toArray()).toEqual(["b", "a", "c", "d"]);
+    window.dispatchEvent(new Event("blur"));
+    expect(inst.toArray()).toEqual(["a", "b", "c", "d"]);
+    expect(inst._ptr).toBeNull();
+    expect(a.classList.contains("s11y-item--dragging")).toBe(false);
+    expect(liveRegionOf(ul).textContent).toBe("CANCEL 1/4");
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onEnd.mock.calls[0][0].source).toBe("pointer");
+    // A later pointerup is inert, and a fresh drag works again.
+    pup();
+    expect(inst.toArray()).toEqual(["a", "b", "c", "d"]);
+    pdown(a, 10);
+    pmove(16);
+    pmove(32);
+    pup();
+    expect(inst.toArray()).toEqual(["b", "a", "c", "d"]);
+  });
+
+  it("the tab going hidden mid-drag cancels it too", () => {
+    const { inst } = startDrag();
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(inst.toArray()).toEqual(["a", "b", "c", "d"]);
+    expect(inst._ptr).toBeNull();
+  });
+
+  it("a press that never became a drag is torn down, not left to tap on release", () => {
+    const ul = makeList();
+    const inst = track(Sorta11y.create(ul, { animation: 0 }));
+    fakeLayout(ul);
+    const a = ul.children[0];
+    pdown(a, 10);
+    window.dispatchEvent(new Event("blur"));
+    expect(inst._ptr).toBeNull();
+    pup();
+    expect(a.classList.contains("s11y-item--grabbed")).toBe(false);
+  });
+
+  it("the listeners go with the drag: after a drop, or destroy(), a blur is ignored", () => {
+    const { inst } = startDrag();
+    pup(); // committed
+    const cancel = vi.spyOn(inst, "_cancelPointer");
+    window.dispatchEvent(new Event("blur"));
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(cancel).not.toHaveBeenCalled();
+
+    const { inst: other } = startDrag();
+    other.destroy();
+    const cancel2 = vi.spyOn(other, "_cancelPointer");
+    window.dispatchEvent(new Event("blur"));
+    expect(cancel2).not.toHaveBeenCalled();
+  });
+});
+
+// A cancelled drag re-anchors the lifted item (a transform at the spot the
+// finger left it) and then settles it with a transition. Written in the same
+// tick without a style flush, the browser only ever sees the final state and
+// the item SNAPS 1-2 rows instead of gliding (measured in Chrome). jsdom
+// cannot render, so assert the sequencing: a layout read (the flush) while
+// the re-anchor transform is applied, right before the settle.
+describe("sorta11y — a cancelled drag glides back", () => {
+  it("flushes the re-anchor transform before the settle transition", () => {
+    const ul = makeList();
+    const inst = track(Sorta11y.create(ul, { animation: 150 }));
+    fakeLayout(ul);
+    const a = ul.children[0];
+    const log = [];
+    const layout = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      if (this === a) log.push(["read", a.style.transform, a.style.transition]);
+      return layout.call(this);
+    };
+    const settle = inst._settle;
+    inst._settle = function (item) {
+      log.push(["settle", item.style.transform, item.style.transition]);
+      return settle.call(this, item);
+    };
+    pdown(a, 10);
+    pmove(16);
+    pmove(32); // [b, a, c, d], lifted by translateY(8px)
+    log.length = 0;
+    document.body.dispatchEvent(
+      new MouseEvent("pointercancel", { bubbles: true }),
+    );
+    const at = log.findIndex((entry) => entry[0] === "settle");
+    // Re-anchored at the release spot (20px visual − (−8px) natural) …
+    expect(log[at]).toEqual(["settle", "translateY(28px)", "none"]);
+    // … and that state was committed by a read before the transition starts.
+    expect(log[at - 1]).toEqual(["read", "translateY(28px)", "none"]);
+    expect(a.style.transition).toMatch(/transform 150ms/);
+    expect(a.style.transform).toBe("");
+  });
+});
+
+// Tap-to-place (WCAG 2.5.7) must survive the scrolling it takes to reach a
+// far target: a mouse wheel, and on mobile the URL bar collapsing under a
+// touch scroll (which fires window `resize`). Those cancel a KEYBOARD grab
+// only. Presses outside the widget, focus leaving it and a hidden tab still
+// cancel either kind.
+describe("sorta11y — auto-cancel by how the item was picked up", () => {
+  const setup = () => {
+    const ul = makeList();
+    const inst = track(Sorta11y.create(ul, { animation: 0 }));
+    fakeLayout(ul);
+    const a = ul.children[0];
+    const held = () => a.classList.contains("s11y-item--grabbed");
+    const tapPickup = () => {
+      pdown(a, 10);
+      pup();
+    };
+    const keyPickup = () => {
+      a.focus();
+      press(a, SPACE);
+    };
+    return { ul, inst, a, held, tapPickup, keyPickup };
+  };
+
+  it("a tap pickup survives wheel and resize, and still places afterwards", () => {
+    const { ul, inst, held, tapPickup } = setup();
+    tapPickup();
+    window.dispatchEvent(new Event("wheel"));
+    window.dispatchEvent(new Event("resize")); // the mobile URL bar collapsing
+    expect(held()).toBe(true);
+    pdown(ul.children[2], 50);
+    pup(); // the placement tap at the far target
+    expect(held()).toBe(false);
+    expect(inst.toArray()).toEqual(["b", "c", "a", "d"]);
+  });
+
+  it("a keyboard pickup is still cancelled by wheel and by resize", () => {
+    const { held, keyPickup } = setup();
+    keyPickup();
+    window.dispatchEvent(new Event("wheel"));
+    expect(held()).toBe(false);
+    keyPickup();
+    window.dispatchEvent(new Event("resize"));
+    expect(held()).toBe(false);
+  });
+
+  it("an outside press, focus loss or a hidden tab cancels either kind", async () => {
+    const { held, tapPickup, keyPickup } = setup();
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+    // A complete press (a tap hold judges it by its release — see below).
+    const outsidePress = () => {
+      outside.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+      );
+      outside.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+    };
+    for (const pickup of [tapPickup, keyPickup]) {
+      pickup();
+      outsidePress();
+      expect(held()).toBe(false);
+      pickup();
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(held()).toBe(false);
+      pickup();
+      outside.focus();
+      await Promise.resolve();
+      expect(held()).toBe(false);
+    }
+  });
+});
+
+// refresh() while a pointer press/drag is live: the app removed (or
+// re-rendered) items under it. The gesture must end cleanly, and a later
+// cancel must never resurrect a row the app removed.
+describe("sorta11y — refresh() under a live pointer drag", () => {
+  const setup = (options = {}) => {
+    const ul = makeList();
+    Array.from(ul.children).forEach((li) => li.classList.add("srt"));
+    const onEnd = vi.fn();
+    const inst = track(
+      Sorta11y.create(ul, {
+        animation: 0,
+        itemSelector: "li.srt",
+        onEnd,
+        ...options,
+      }),
+    );
+    fakeLayout(ul);
+    return { ul, inst, onEnd };
+  };
+
+  it("the dragged item removed: drag torn down, onEnd -1, later events inert, new drag works", () => {
+    const { ul, inst, onEnd } = setup();
+    const a = ul.children[0];
+    pdown(a, 10);
+    pmove(16);
+    pmove(32); // [b, a, c, d]
+    a.remove();
+    expect(() => inst.refresh()).not.toThrow();
+    expect(inst._ptr).toBeNull();
+    expect(ul.style.userSelect).toBe("");
+    expect(a.classList.contains("s11y-item--dragging")).toBe(false);
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onEnd.mock.calls[0][0]).toMatchObject({
+      item: a,
+      oldIndex: 0,
+      newIndex: -1,
+      source: "pointer",
+    });
+    expect(() => {
+      pmove(60);
+      pup();
+    }).not.toThrow();
+    expect(inst.toArray()).toEqual(["b", "c", "d"]);
+    expect(onEnd).toHaveBeenCalledOnce();
+    pdown(ul.children[0], 10); // a fresh drag on what is left
+    pmove(16);
+    pmove(32);
+    pup();
+    expect(inst.toArray()).toEqual(["c", "b", "d"]);
+  });
+
+  it("releases the pointer capture of a row that left the set but not the DOM", () => {
+    const { ul, inst } = setup();
+    const a = ul.children[0];
+    a.setPointerCapture = vi.fn();
+    a.releasePointerCapture = vi.fn();
+    pdown(a, 10, { pointerId: 7 });
+    pmove(16);
+    a.classList.remove("srt"); // still in the DOM, no longer an item
+    inst.refresh();
+    expect(a.releasePointerCapture).toHaveBeenCalled();
+    expect(inst._ptr).toBeNull();
+  });
+
+  it("a press (no drag yet) on a vanished item is dropped silently: no onEnd, no tap later", () => {
+    const { ul, inst, onEnd } = setup();
+    const errors = [];
+    const onError = (e) => {
+      errors.push(e.error);
+      e.preventDefault();
+    };
+    window.addEventListener("error", onError);
+    const a = ul.children[0];
+    pdown(a, 10);
+    a.remove();
+    inst.refresh();
+    pup(); // used to tap-grab the departed row and throw on its lost handle
+    window.removeEventListener("error", onError);
+    expect(errors).toEqual([]);
+    expect(inst._ptr).toBeNull();
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(
+      Array.from(ul.children).some((li) =>
+        li.classList.contains("s11y-item--grabbed"),
+      ),
+    ).toBe(false);
+  });
+
+  it("another item removed mid-drag is not resurrected by the cancel", () => {
+    const { ul, inst } = setup();
+    const [a, b] = ul.children;
+    pdown(a, 10);
+    pmove(16);
+    pmove(52); // a past c: [b, c, a, d]
+    b.remove();
+    inst.refresh();
+    document.body.dispatchEvent(
+      new MouseEvent("pointercancel", { bubbles: true }),
+    );
+    expect(b.isConnected).toBe(false);
+    expect(inst.toArray()).toEqual(["a", "c", "d"]);
+  });
+});
+
+// The pointer-click guard ignores a click within 700 ms of a press on the same
+// item (it is that press's own click). A genuine KEYBOARD activation in that
+// window — Space/Enter on the button right after tapping it — must get
+// through: it is the detail-0 click following a Space/Enter keydown on that
+// very button, with no pointer press in between.
+describe("sorta11y — keyboard activation right after a tap", () => {
+  const setup = () => {
+    const ul = makeList({ handle: true });
+    const inst = track(
+      Sorta11y.create(ul, { handle: ".drag-handle", animation: 0 }),
+    );
+    fakeLayout(ul);
+    const handle = ul.children[0].querySelector(".drag-handle");
+    const held = () => handle.getAttribute("aria-pressed") === "true";
+    const tap = () => {
+      pdown(handle, 10);
+      pup();
+    };
+    return { ul, inst, handle, held, tap };
+  };
+
+  it("tap to pick up, tap to drop, then Space on the handle picks up again", () => {
+    const { handle, held, tap } = setup();
+    tap();
+    tap();
+    expect(held()).toBe(false);
+    expect(document.activeElement).toBe(handle);
+    press(handle, SPACE); // within the 700 ms window of the last tap
+    expect(held()).toBe(true);
+  });
+
+  it("tap pickup, a keyboard move, then Space/Enter on the handle drops", () => {
+    const { inst, handle, held, tap } = setup();
+    tap();
+    press(handle, "ArrowDown"); // focus lands on the handle again
+    press(handle, SPACE);
+    expect(held()).toBe(false);
+    expect(inst.toArray()).toEqual(["b", "a", "c", "d"]);
+    tap(); // pick up again (a is now 2nd — tap its handle directly)
+    press(handle, "ArrowUp");
+    press(handle, "Enter");
+    expect(held()).toBe(false);
+  });
+
+  it("a pointer press after the keydown puts the guard back in charge", () => {
+    const { handle, held, tap } = setup();
+    handle.focus();
+    handle.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: SPACE,
+        bubbles: true,
+        cancelable: true,
+      }),
+    ); // a keydown whose click never came
+    tap(); // pick up
+    expect(held()).toBe(true);
+    activate(handle); // the tap's own (ghost) click: still ignored
+    expect(held()).toBe(true);
+  });
+});
+
+// A dragged row that vanishes takes a focus it held with it: hand that focus
+// to the row now in its slot, as a vanished keyboard grab does — but only if
+// the row really held it (a click that focused nothing must not pull focus
+// into the list).
+describe("sorta11y — focus when a pointer-dragged row vanishes", () => {
+  const setup = () => {
+    const ul = makeList({ handle: true });
+    const inst = track(
+      Sorta11y.create(ul, { handle: ".drag-handle", animation: 0 }),
+    );
+    fakeLayout(ul);
+    const handleOf = (i) => ul.children[i].querySelector(".drag-handle");
+    return { ul, inst, handleOf };
+  };
+
+  it("a focused handle's row removed mid-drag: focus moves to the next row's handle", () => {
+    const { ul, inst, handleOf } = setup();
+    const a = handleOf(0);
+    pdown(a, 10);
+    a.focus(); // the mousedown that follows the pointerdown focuses the button
+    pmove(16); // drag starts
+    ul.children[0].remove();
+    inst.refresh();
+    expect(document.activeElement).toBe(handleOf(0)); // b's handle, same slot
+  });
+
+  it("a focused handle's pending press (no drag yet): focus still moves on", () => {
+    const { ul, inst, handleOf } = setup();
+    const d = handleOf(3);
+    d.focus(); // tabbed there, then pressed it
+    pdown(d, 70);
+    ul.children[3].remove();
+    inst.refresh();
+    expect(document.activeElement).toBe(handleOf(2)); // the new last row
+  });
+
+  it("a row that never held focus: focus is left alone", () => {
+    const { ul, inst, handleOf } = setup();
+    pdown(handleOf(0), 10); // e.g. Safari: a click focuses nothing
+    pmove(16);
+    ul.children[0].remove();
+    inst.refresh();
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
+// An outside press during a TAP hold is judged by how it ends: released in
+// place (a tap/click elsewhere) = letting go of the hold → cancel; taken over
+// by the browser for scrolling (pointercancel), moved beyond the tap slop, or
+// on a scrollbar = scrolling to a far target → the hold stays. A keyboard
+// grab still cancels on the outside press itself.
+describe("sorta11y — outside presses during a tap hold", () => {
+  const setup = () => {
+    const ul = makeList();
+    const onEnd = vi.fn();
+    const inst = track(Sorta11y.create(ul, { animation: 0, onEnd }));
+    fakeLayout(ul);
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    const a = ul.children[0];
+    const held = () => a.classList.contains("s11y-item--grabbed");
+    const tapHold = () => {
+      pdown(a, 10);
+      pup();
+    };
+    // An outside touch pointer with its own id (pointerType + pointerId
+    // stamped as the real events carry them).
+    const touch = (type, id, props = {}) => {
+      const ev = ptrEvt(type, "touch", props);
+      Object.defineProperty(ev, "pointerId", { value: id });
+      outside.dispatchEvent(ev);
+    };
+    return { ul, inst, onEnd, outside, a, held, tapHold, touch };
+  };
+
+  it("a touch scroll starting outside keeps the hold; a placement tap then works", () => {
+    const { ul, inst, held, tapHold, touch } = setup();
+    tapHold();
+    touch("pointerdown", 5, { clientY: 300 });
+    outsideCompat(ul);
+    touch("pointercancel", 5); // the browser takes the gesture for scrolling
+    expect(held()).toBe(true);
+    pdown(ul.children[3], 70);
+    pup(); // the placement tap at the far target
+    expect(held()).toBe(false);
+    expect(inst.toArray()).toEqual(["b", "c", "d", "a"]);
+  });
+
+  it("an outside tap releases the hold: order reverted, onEnd source pointer", () => {
+    const { inst, onEnd, a, held, tapHold, touch } = setup();
+    tapHold();
+    press(a, "ArrowDown"); // [b, a, c, d]
+    touch("pointerdown", 5, { clientY: 300 });
+    expect(held()).toBe(true); // not yet — it might still become a scroll
+    touch("pointerup", 5, { clientY: 302 });
+    expect(held()).toBe(false);
+    expect(inst.toArray()).toEqual(["a", "b", "c", "d"]);
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onEnd.mock.calls[0][0].source).toBe("pointer");
+  });
+
+  it("an outside tap releases without a scrolling focus steal-back", () => {
+    // On touch the release is judged at pointerup, BEFORE the tap's
+    // compatibility mousedown/click: a scrolling grab.focus() here would move
+    // the page back to the list under the finger, so the click could miss.
+    const { a, held, tapHold, touch } = setup();
+    tapHold();
+    const focusSpy = vi.spyOn(a, "focus");
+    touch("pointerdown", 5, { clientY: 300 });
+    touch("pointerup", 5, { clientY: 300 });
+    expect(held()).toBe(false);
+    expect(focusSpy).toHaveBeenCalled();
+    for (const [opts] of focusSpy.mock.calls) {
+      expect(opts).toEqual({ preventScroll: true });
+    }
+    expect(document.activeElement).toBe(a); // not left on the list / <body>
+  });
+
+  it("an outside tap keeps focus that onEnd moved elsewhere", () => {
+    const ul = makeList();
+    const elsewhere = document.createElement("button");
+    document.body.appendChild(elsewhere);
+    track(
+      Sorta11y.create(ul, { animation: 0, onEnd: () => elsewhere.focus() }),
+    );
+    fakeLayout(ul);
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    pdown(ul.children[0], 10);
+    pup(); // tap hold
+    for (const type of ["pointerdown", "pointerup"]) {
+      const ev = ptrEvt(type, "touch", { clientY: 300 });
+      Object.defineProperty(ev, "pointerId", { value: 5 });
+      outside.dispatchEvent(ev);
+    }
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it("an outside press that moves past the tap slop is a scroll, not a tap", () => {
+    const { held, tapHold, touch } = setup();
+    tapHold();
+    touch("pointerdown", 5, { clientY: 300 });
+    touch("pointermove", 5, { clientY: 340 });
+    touch("pointerup", 5, { clientY: 340 });
+    expect(held()).toBe(true);
+  });
+
+  it("a press on the page scrollbar is a scroll, not a tap", () => {
+    const { held, tapHold } = setup();
+    tapHold();
+    const root = document.documentElement;
+    Object.defineProperty(root, "clientWidth", {
+      configurable: true,
+      value: 1000,
+    });
+    try {
+      const at = { bubbles: true, button: 0, clientX: 1005, clientY: 50 };
+      root.dispatchEvent(new MouseEvent("pointerdown", at));
+      root.dispatchEvent(new MouseEvent("pointerup", at));
+      expect(held()).toBe(true);
+    } finally {
+      delete root.clientWidth;
+    }
+  });
+
+  // A scroll container's scrollbar is the band between its client box and
+  // its border — its border itself is ordinary page, where a tap releases.
+  it("a scroll container: its scrollbar keeps the hold, its border does not", () => {
+    const { held, tapHold, outside } = setup();
+    outside.style.border = "2px solid";
+    const size = (prop, value) =>
+      Object.defineProperty(outside, prop, { configurable: true, value });
+    size("clientWidth", 200); // content + padding, scrollbar excluded
+    size("offsetWidth", 219); // 2 + 200 + 15 (scrollbar) + 2
+    size("clientHeight", 100);
+    size("offsetHeight", 104); // no horizontal scrollbar
+    const pressAt = (offsetX, offsetY = 50) => {
+      ["pointerdown", "pointerup"].forEach((type) => {
+        const ev = new MouseEvent(type, { bubbles: true, button: 0 });
+        Object.defineProperty(ev, "offsetX", { value: offsetX });
+        Object.defineProperty(ev, "offsetY", { value: offsetY });
+        outside.dispatchEvent(ev);
+      });
+    };
+    tapHold();
+    pressAt(205); // inside the 15px scrollbar band
+    expect(held()).toBe(true);
+    pressAt(50, 101); // the bottom border (no scrollbar there)
+    expect(held()).toBe(false);
+    tapHold();
+    pressAt(216); // the right border, beyond the scrollbar
+    expect(held()).toBe(false);
+  });
+
+  it("two outside pointers: each is judged on its own", () => {
+    const { held, tapHold, touch } = setup();
+    tapHold();
+    touch("pointerdown", 5, { clientY: 300 });
+    touch("pointerdown", 6, { clientY: 400 });
+    touch("pointercancel", 5); // one finger scrolls…
+    expect(held()).toBe(true);
+    touch("pointerup", 6, { clientY: 400 }); // …the other one taps
+    expect(held()).toBe(false);
+  });
+
+  it("the gesture's mousedown/touchstart echoes do not cancel early", () => {
+    const { ul, held, tapHold, touch } = setup();
+    tapHold();
+    touch("pointerdown", 5, { clientY: 300 });
+    outsideCompat(ul);
+    expect(held()).toBe(true);
+    touch("pointercancel", 5);
+    expect(held()).toBe(true);
+  });
+
+  it("a keyboard grab still cancels on the outside press itself", () => {
+    const { a, outside } = setup();
+    a.focus();
+    press(a, SPACE);
+    outside.dispatchEvent(
+      new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+    );
+    expect(a.classList.contains("s11y-item--grabbed")).toBe(false);
+  });
+
+  it("the outside-press listeners go with the hold: drop, cancel, destroy", () => {
+    const { inst, ul, tapHold, touch } = setup();
+    const cancel = vi.spyOn(inst, "_cancel");
+    const tapOutside = (id) => {
+      touch("pointerdown", id, { clientY: 300 });
+      touch("pointerup", id, { clientY: 300 });
+    };
+    tapHold();
+    pdown(ul.children[0], 10);
+    pup(); // dropped by a tap on itself
+    tapOutside(1);
+    tapHold();
+    press(ul, "Escape"); // cancelled
+    cancel.mockClear();
+    touch("pointerdown", 2, { clientY: 300 }); // a press left pending…
+    tapOutside(3);
+    expect(cancel).not.toHaveBeenCalled();
+    tapHold();
+    touch("pointerdown", 4, { clientY: 300 });
+    inst.destroy(); // …and one pending at destroy
+    cancel.mockClear();
+    touch("pointerup", 4, { clientY: 300 });
+    tapOutside(5);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+});
+
+// The compatibility events a touch/mouse press also fires, outside the list.
+function outsideCompat(ul) {
+  const where = ul.parentElement.parentElement; // outside the s11y-app wrapper
+  where.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  where.dispatchEvent(new Event("touchstart", { bubbles: true }));
+}

@@ -147,3 +147,126 @@ describe("sorta11y — Sorta11y.fromSelect", () => {
     expect(Sorta11y.fromSelect(document.createElement("div"))).toBeNull();
   });
 });
+
+// The generated <ul> must carry the select's accessible name, however the
+// page named it: explicit `label` option > aria-labelledby (accname order;
+// the referenced elements stay in the DOM, so the reference is copied) >
+// aria-label > the standard <label for> / wrapping <label>.
+describe("sorta11y — fromSelect list name", () => {
+  const enhance = (select, opts = {}) => {
+    const inst = Sorta11y.fromSelect(select, { animation: 0, ...opts });
+    tracked.push(inst);
+    return inst.el;
+  };
+  const makeSelect = (id = "order") => {
+    const select = document.createElement("select");
+    select.multiple = true;
+    select.id = id;
+    ["a", "b"].forEach((v) => {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = v.toUpperCase();
+      select.appendChild(o);
+    });
+    return select;
+  };
+
+  it("takes the text of a <label for> (whitespace-collapsed, trimmed)", () => {
+    const label = document.createElement("label");
+    label.htmlFor = "order";
+    label.textContent = "  Reihenfolge   der Sitzungen ";
+    const select = makeSelect();
+    document.body.append(label, select);
+    const ul = enhance(select);
+    expect(ul.getAttribute("aria-label")).toBe("Reihenfolge der Sitzungen");
+    expect(ul.hasAttribute("aria-labelledby")).toBe(false);
+  });
+
+  it("takes the text of a wrapping <label>", () => {
+    const label = document.createElement("label");
+    label.append("Sessions ");
+    const select = makeSelect();
+    label.appendChild(select);
+    document.body.appendChild(label);
+    expect(enhance(select).getAttribute("aria-label")).toBe("Sessions");
+  });
+
+  it("copies aria-labelledby, which beats a <label>", () => {
+    const heading = document.createElement("h2");
+    heading.id = "order-heading";
+    heading.textContent = "Order";
+    const label = document.createElement("label");
+    label.htmlFor = "order";
+    label.textContent = "Label text";
+    const select = makeSelect();
+    select.setAttribute("aria-labelledby", "order-heading");
+    document.body.append(heading, label, select);
+    const ul = enhance(select);
+    expect(ul.getAttribute("aria-labelledby")).toBe("order-heading");
+    expect(ul.hasAttribute("aria-label")).toBe(false);
+  });
+
+  // accname order: aria-labelledby beats aria-label.
+  it("aria-labelledby beats aria-label and a <label>", () => {
+    const heading = document.createElement("h2");
+    heading.id = "order-heading";
+    heading.textContent = "Order";
+    const label = document.createElement("label");
+    label.htmlFor = "order";
+    label.textContent = "Label text";
+    const select = makeSelect();
+    select.setAttribute("aria-label", "Aria name");
+    select.setAttribute("aria-labelledby", "order-heading");
+    document.body.append(heading, label, select);
+    const ul = enhance(select);
+    expect(ul.getAttribute("aria-labelledby")).toBe("order-heading");
+    expect(ul.hasAttribute("aria-label")).toBe(false);
+  });
+
+  it("a dangling aria-labelledby names nothing: aria-label, then <label>, apply", () => {
+    const label = document.createElement("label");
+    label.htmlFor = "order";
+    label.textContent = "Label text";
+    const select = makeSelect();
+    select.setAttribute("aria-label", "Aria name");
+    select.setAttribute("aria-labelledby", "missing");
+    document.body.append(label, select);
+    const ul = enhance(select);
+    expect(ul.getAttribute("aria-label")).toBe("Aria name");
+    expect(ul.hasAttribute("aria-labelledby")).toBe(false);
+    select.removeAttribute("aria-label");
+    const select2 = makeSelect("order2");
+    select2.setAttribute("aria-labelledby", "missing");
+    const label2 = document.createElement("label");
+    label2.htmlFor = "order2";
+    label2.textContent = "Second";
+    document.body.append(label2, select2);
+    expect(enhance(select2).getAttribute("aria-label")).toBe("Second");
+  });
+
+  it("the explicit label option beats everything", () => {
+    const heading = document.createElement("h2");
+    heading.id = "order-heading";
+    const label = document.createElement("label");
+    label.htmlFor = "order";
+    label.textContent = "Label text";
+    const select = makeSelect();
+    select.setAttribute("aria-label", "Aria name");
+    select.setAttribute("aria-labelledby", "order-heading");
+    document.body.append(heading, label, select);
+    const ul = enhance(select, { label: "Mine" });
+    expect(ul.getAttribute("aria-label")).toBe("Mine");
+    expect(ul.hasAttribute("aria-labelledby")).toBe(false);
+  });
+
+  it("leaves an unnamed select's list unnamed (no empty aria-label)", () => {
+    const empty = document.createElement("label");
+    empty.htmlFor = "order";
+    empty.textContent = "   ";
+    const select = makeSelect();
+    document.body.append(empty, select);
+    const ul = enhance(select);
+    expect(ul.hasAttribute("aria-label")).toBe(false);
+    expect(ul.hasAttribute("aria-labelledby")).toBe(false);
+  });
+});

@@ -25,6 +25,23 @@ describe("sorta11y — configuration & robustness", () => {
     expect(() => Sorta11y.create({})).toThrow(/DOM element/);
   });
 
+  // The docs promise Sorta11y.create("#my-list", …); fromSelect and
+  // mirrorToSelect already take selectors the same way.
+  it("accepts a selector string (create, new, and the bare factory)", () => {
+    const ul = makeList();
+    ul.id = "my-list";
+    const inst = track(Sorta11y.create("#my-list"));
+    expect(inst.el).toBe(ul);
+    expect(Sorta11y.get(ul)).toBe(inst);
+    expect(new Sorta11y("#my-list")).toBe(inst); // idempotent per element
+    expect(Sorta11y("ul#my-list")).toBe(inst);
+  });
+
+  it("throws a TypeError naming a selector that matches nothing", () => {
+    expect(() => Sorta11y.create("#nope")).toThrow(TypeError);
+    expect(() => Sorta11y.create("#nope")).toThrow(/#nope/);
+  });
+
   it("can be called as a factory without `new`", () => {
     const ul = makeList();
     const inst = track(Sorta11y(ul));

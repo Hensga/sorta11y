@@ -386,3 +386,264 @@ describe("sorta11y — keyboard grab / move / drop / cancel", () => {
     expect(ul.parentElement.getAttribute("role")).toBe("application");
   });
 });
+
+// The recommended setup — a native <button> handle. A grab moves focus onto
+// the LIST (screen-reader mode switch, see application.test.js), so the next
+// Space/Enter is a keydown on the <ul>, not on the button: no button click
+// follows it, and the keydown itself has to drop (and stop the page scroll).
+// press() delivers keys to document.activeElement and simulates the button's
+// native activation, exactly like a browser.
+describe("sorta11y — <button> handle: Space/Enter after a pickup", () => {
+  const setup = (options = {}) => {
+    const ul = makeList({ handle: true });
+    const onEnd = vi.fn();
+    const inst = create(ul, { handle: ".drag-handle", onEnd, ...options });
+    const handleOf = (i) => ul.children[i].querySelector(".drag-handle");
+    return { ul, inst, onEnd, handleOf };
+  };
+  const held = (ul, i) =>
+    ul.children[i].classList.contains("s11y-item--grabbed");
+
+  it("Space picks up, then Space drops (no scroll, focus back on the handle)", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, SPACE); // keydown + keyup on the button → its click grabs
+    expect(held(ul, 0)).toBe(true);
+    expect(document.activeElement).toBe(ul);
+    const drop = press(handle, SPACE); // now a keydown on the <ul>
+    expect(drop.defaultPrevented).toBe(true); // Space must not scroll the page
+    expect(held(ul, 0)).toBe(false);
+    expect(handle.getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(handle);
+    expect(liveRegionOf(ul).textContent).toBe("DROP 1/4");
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("Enter picks up, then Enter drops", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, "Enter"); // the button's own activation grabs
+    expect(held(ul, 0)).toBe(true);
+    const drop = press(handle, "Enter"); // keydown on the <ul>
+    expect(drop.defaultPrevented).toBe(true);
+    expect(held(ul, 0)).toBe(false);
+    expect(document.activeElement).toBe(handle);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("ArrowUp at the top boundary, then Space drops", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, SPACE);
+    press(handle, "ArrowUp"); // boundary: nothing moves, focus stays on the list
+    expect(document.activeElement).toBe(ul);
+    press(handle, SPACE);
+    expect(held(ul, 0)).toBe(false);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("the last item: End (already there), then Space drops", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(3);
+    handle.focus();
+    press(handle, SPACE);
+    press(handle, "End"); // no-op move with feedback
+    press(handle, SPACE);
+    expect(held(ul, 3)).toBe(false);
+    expect(domOrder(ul)).toEqual(["a", "b", "c", "d"]);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("a move, then Space drops through the handle's own click exactly once", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, SPACE);
+    press(handle, "ArrowDown"); // the move puts focus on the handle again
+    expect(document.activeElement).toBe(handle);
+    press(handle, SPACE); // keydown on the button → its click drops
+    expect(held(ul, 1)).toBe(false);
+    expect(domOrder(ul)).toEqual(["b", "a", "c", "d"]);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("a tap pickup, then Space drops", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      }),
+    );
+    document.body.dispatchEvent(
+      new MouseEvent("pointerup", { bubbles: true, cancelable: true }),
+    );
+    expect(held(ul, 0)).toBe(true); // the tap picked it up (focus on the list)
+    const drop = press(handle, SPACE);
+    expect(drop.defaultPrevented).toBe(true);
+    expect(held(ul, 0)).toBe(false);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("holding Space (auto-repeat) is one pickup, not a toggle storm", () => {
+    const { ul, onEnd, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, SPACE); // pick up
+    for (let i = 0; i < 3; i++) {
+      const rep = press(handle, SPACE, { repeat: true });
+      expect(rep.defaultPrevented).toBe(true); // no page scroll either
+      expect(held(ul, 0)).toBe(true);
+    }
+    press(handle, SPACE); // a fresh press drops
+    expect(held(ul, 0)).toBe(false);
+    // Still holding after the drop: the repeats now hit the refocused button
+    // and must neither re-grab nor arm its native activation.
+    for (let i = 0; i < 3; i++) press(handle, SPACE, { repeat: true });
+    expect(held(ul, 0)).toBe(false);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("holding Enter (auto-repeat) is one pickup, not a toggle storm", () => {
+    const { ul, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, "Enter", { repeat: false }); // pick up
+    for (let i = 0; i < 3; i++) press(handle, "Enter", { repeat: true });
+    expect(held(ul, 0)).toBe(true);
+    press(handle, "Enter"); // drop
+    for (let i = 0; i < 3; i++) press(handle, "Enter", { repeat: true });
+    expect(held(ul, 0)).toBe(false);
+  });
+
+  it("no-handle item: holding Space is one pickup; arrow auto-repeat still moves", () => {
+    const ul = makeList();
+    create(ul);
+    const item = ul.children[0];
+    item.focus();
+    press(item, SPACE); // pick up
+    press(item, SPACE, { repeat: true });
+    expect(item.classList.contains("s11y-item--grabbed")).toBe(true);
+    press(item, "ArrowDown");
+    press(item, "ArrowDown", { repeat: true }); // held arrow keeps moving
+    expect(domOrder(ul)).toEqual(["b", "c", "a", "d"]);
+    press(item, SPACE); // drop
+    press(item, SPACE, { repeat: true });
+    expect(item.classList.contains("s11y-item--grabbed")).toBe(false);
+  });
+
+  // Engines that activate a button on ANY Space keyup (older Gecko did,
+  // regardless of where the keydown went) would click the handle that the
+  // drop just refocused — and re-grab. The keydown path arms a guard for
+  // exactly that one keyboard click; replayed here by hand.
+  it("a keyboard click riding the dropping Space's keyup does not re-grab", async () => {
+    const { ul, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, SPACE); // pick up
+    const down = new KeyboardEvent("keydown", {
+      key: SPACE,
+      bubbles: true,
+      cancelable: true,
+    });
+    ul.dispatchEvent(down); // drop from the list; focus returns to the handle
+    expect(held(ul, 0)).toBe(false);
+    handle.dispatchEvent(
+      new KeyboardEvent("keyup", { key: SPACE, bubbles: true }),
+    );
+    activate(handle); // the keyup's activation click, same task
+    expect(held(ul, 0)).toBe(false); // swallowed
+    await new Promise((r) => setTimeout(r, 0)); // the keyup has settled
+    activate(handle); // a later genuine activation works again
+    expect(held(ul, 0)).toBe(true);
+  });
+
+  it("the keyup guard never touches an AT activation (detail 1) and ends on the next keydown", () => {
+    const { ul, handleOf } = setup();
+    const handle = handleOf(0);
+    handle.focus();
+    press(handle, SPACE); // pick up
+    ul.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: SPACE,
+        bubbles: true,
+        cancelable: true,
+      }),
+    ); // drop; its keyup is lost (e.g. the window lost focus meanwhile)
+    activate(handle, 1); // a screen reader's browse-mode press: honoured
+    expect(held(ul, 0)).toBe(true);
+    activate(handle, 1); // and again: drop
+    expect(held(ul, 0)).toBe(false);
+    press(handle, SPACE); // a fresh press ends the guard: its own click grabs
+    expect(held(ul, 0)).toBe(true);
+  });
+});
+
+// A sortable list nested in another list's (no-handle) item: a key or press
+// on the inner list bubbles up to the outer one, whose ancestor walk would
+// resolve it to the OUTER item — which then grabbed alongside, or instead.
+describe("sorta11y — nested sortable lists", () => {
+  const nest = () => {
+    const outer = makeList();
+    const inner = document.createElement("ul");
+    ["x", "y", "z"].forEach((id) => {
+      const li = document.createElement("li");
+      li.setAttribute("data-id", id);
+      li.textContent = id.toUpperCase();
+      inner.appendChild(li);
+    });
+    outer.children[0].appendChild(inner);
+    const outerStart = vi.fn();
+    create(outer, { onStart: outerStart, animation: 0 });
+    create(inner, { animation: 0 });
+    return { outer, inner, outerStart };
+  };
+  const held = (li) => li.classList.contains("s11y-item--grabbed");
+
+  it("Space on an inner item grabs only the inner one — and its drop does not grab the outer", () => {
+    const { outer, inner, outerStart } = nest();
+    const x = inner.children[0];
+    x.focus();
+    press(x, SPACE); // grab x (focus → inner list)
+    expect(held(x)).toBe(true);
+    expect(held(outer.children[0])).toBe(false);
+    press(x, "ArrowDown"); // inner: [y, x, z]
+    press(x, SPACE); // drop — the keydown bubbles on to the outer list
+    expect(held(x)).toBe(false);
+    expect(held(outer.children[0])).toBe(false);
+    expect(outerStart).not.toHaveBeenCalled();
+    expect(domOrder(inner)).toEqual(["y", "x", "z"]);
+    expect(domOrder(outer)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("a tap on an inner item picks up only the inner one", () => {
+    const { outer, inner, outerStart } = nest();
+    const x = inner.children[0];
+    x.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      }),
+    );
+    document.body.dispatchEvent(
+      new MouseEvent("pointerup", { bubbles: true, cancelable: true }),
+    );
+    expect(held(x)).toBe(true);
+    expect(held(outer.children[0])).toBe(false);
+    expect(outerStart).not.toHaveBeenCalled();
+  });
+
+  it("the outer item itself still grabs from its own keydown", () => {
+    const { outer } = nest();
+    const a = outer.children[0];
+    a.focus();
+    press(a, SPACE);
+    expect(held(a)).toBe(true);
+  });
+});
