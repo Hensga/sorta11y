@@ -19,16 +19,16 @@ import "sorta11y/style.css";
 
 The package exposes three entry points:
 
-| Specifier             | What it is                                             |
-| --------------------- | ------------------------------------------------------ |
-| `sorta11y`            | The library (`src/sorta11y.js`)                        |
-| `sorta11y/style.css`  | Structural and state CSS hooks                         |
-| `sorta11y/locales/de` | An optional locale file — see [i18n](./guides/i18n.md) |
+| Specifier            | What it is                                                        |
+| -------------------- | ----------------------------------------------------------------- |
+| `sorta11y`           | The library (`src/sorta11y.js`)                                   |
+| `sorta11y/style.css` | Structural and state CSS hooks                                    |
+| `sorta11y/locales/*` | Optional locale files (`de`, `en`) — see [i18n](./guides/i18n.md) |
 
 ## CDN — no build step
 
 The file is a UMD bundle, so a plain `<script>` tag works and puts `Sorta11y` on
-`window`:
+`window`. For a quick trial, the moving `alpha` tag is fine:
 
 ```html
 <link
@@ -38,12 +38,38 @@ The file is a UMD bundle, so a plain `<script>` tag works and puts `Sorta11y` on
 <script src="https://cdn.jsdelivr.net/npm/sorta11y@alpha/src/sorta11y.js"></script>
 ```
 
-`unpkg.com` works the same way. For production, pin the exact version rather
-than the `alpha` tag so a new pre-release can't change behaviour under you:
+`unpkg.com` works the same way.
+
+### In production: pin a version and add SRI
+
+For production, pin the exact version so a new pre-release can't change
+behaviour under you, and add
+[Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity)
+(`integrity` + `crossorigin="anonymous"`) so the browser refuses a file that
+doesn't match the one you reviewed:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.css"
+  integrity="sha384-HASH_FROM_JSDELIVR"
+  crossorigin="anonymous"
+/>
+<script
+  src="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.js"
+  integrity="sha384-HASH_FROM_JSDELIVR"
+  crossorigin="anonymous"
+></script>
 ```
+
+Replace each placeholder with that file's hash: the
+[package page on jsDelivr](https://www.jsdelivr.com/package/npm/sorta11y) shows
+the SRI hash for every file of every version. A hash matches exactly one file,
+so:
+
+- the moving `@alpha` tag can't carry one — SRI needs the pinned version;
+- every file you load, locale files included, needs its own `integrity`;
+- when you bump the pinned version, update the hashes with it.
 
 ## Straight from the repository
 
@@ -69,8 +95,9 @@ and the keyboard instructions become visible on the page.
   layer builds on Pointer Events with `setPointerCapture`, so there is no
   Internet Explorer support. Details in
   [Browser & AT support](./reference/support.md).
-- **Node:** only for development (Node ≥ 20 to run the test suite). The library
-  itself runs entirely in the browser and has no runtime dependencies.
+- **Node:** only for development — Node ≥ 20 to run the test suite, ≥ 22.12 to
+  build this documentation site. The library itself runs entirely in the
+  browser and has no runtime dependencies.
 
 ## Verify it works
 

@@ -1,115 +1,113 @@
-# AT-Testmatrix
+# AT test matrix
 
-Verbindliche Assistive-Technology-Kombinationen für die manuelle A11y-Verifikation.
-Es sind die drei verbreitetsten Stacks. Die automatisierte Prüfung mit axe-core
-ergänzt diese Matrix — ersetzt sie aber **nicht**, weil das Live-Region-Timing je
-AT/Browser variiert und nicht voll automatisierbar ist.
+The assistive-technology combinations sorta11y is verified against by hand —
+the three most widely used screen-reader stacks. The automated axe-core checks
+complement this matrix but do **not** replace it: live-region timing varies per
+screen reader and browser and cannot be fully automated.
 
-## Kombinationen
+## Combinations
 
-| #   | Screenreader | Browser | OS      | Status       |
-| --- | ------------ | ------- | ------- | ------------ |
-| 1   | NVDA         | Firefox | Windows | ☐ ausstehend |
-| 2   | JAWS         | Chrome  | Windows | ☐ ausstehend |
-| 3   | VoiceOver    | Safari  | macOS   | ☐ ausstehend |
+| #   | Screen reader | Browser | OS      | Status    |
+| --- | ------------- | ------- | ------- | --------- |
+| 1   | NVDA          | Firefox | Windows | ☐ pending |
+| 2   | JAWS          | Chrome  | Windows | ☐ pending |
+| 3   | VoiceOver     | Safari  | macOS   | ☐ pending |
 
-## Testszenarien (je Kombination)
+## Test scenarios (per combination)
 
-Jede Kombination durchläuft jedes Szenario einzeln; Ergebnisse werden protokolliert.
+Each combination runs every scenario on its own; results go into the
+[results log](#results-log) below.
 
-| #   | Szenario                         | Erwartung                                                                                                                                                                   |
-| --- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S1  | Liste durchlaufen (Tab)          | **Jedes** Item ist ein Tab-Stopp (Tab/Shift+Tab); aktiver Griff angesagt inkl. „Position X von Y".                                                                          |
-| S2  | Aufnehmen (Leertaste/Enter)      | Im **Browse-Modus** greift der Griff-Button ohne manuelles Umschalten; Ansage „aufgenommen" + Pfeiltasten-Hinweis; `aria-pressed=true`.                                     |
-| S3  | Bewegen (Pfeil ↑/↓)              | Nach jeder Bewegung neue Position angesagt; Fokus bleibt am bewegten Item.                                                                                                  |
-| S4  | An den Rand (Home/End)           | Sprung an Anfang/Ende mit korrekter Positionsansage.                                                                                                                        |
-| S5  | Ablegen (Leertaste/Enter)        | Ansage „abgelegt an Position X von Y"; `aria-pressed=false`; Reihenfolge committet (onChange).                                                                              |
-| S6  | Abbrechen (Esc)                  | Ausgangsreihenfolge wiederhergestellt; passende Ansage; Fokus zurück am Item.                                                                                               |
-| S7  | Auto-Abbruch                     | Maus/Touch/scroll/resize/Tab-Wechsel während Grab → sauberer Abbruch ohne „hängenden" Zustand.                                                                              |
-| S8  | Fokus-Restore                    | Nach Umordnung bleibt der Fokus am selben Item (per `data-id`), springt nicht auf `<body>`.                                                                                 |
-| S9  | Keine verschluckte/Doppel-Ansage | Erste Ansage nach Init nicht verschluckt; identische Folgetexte werden zuverlässig erneut angesagt.                                                                         |
-| S10 | Fokusmodus nur beim Grab         | Im Ruhezustand ist die Liste normal lesbar (Browse-Modus); `role="application"` liegt **nur während** des Grabs am Wrapper an und ist nach Ablegen/Abbruch wieder entfernt. |
+| #   | Scenario                              | Expected                                                                                                                                                                            |
+| --- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1  | Walk the list (Tab)                   | **Every** item is a tab stop (Tab/Shift+Tab); the focused grab target is announced, including "Position X of Y".                                                                    |
+| S2  | Pick up (Space/Enter)                 | In **browse mode**, the handle button picks up without a manual mode switch; "picked up" is announced with the arrow-key hint; `aria-pressed=true`.                                 |
+| S3  | Move (↑/↓)                            | The new position is announced after every move; focus stays on the moved item.                                                                                                      |
+| S4  | To the edge (Home/End)                | Jumps to the start/end with the correct position announced.                                                                                                                         |
+| S5  | Drop (Space/Enter)                    | "Dropped … Position X of Y" is announced; `aria-pressed=false`; the order is committed (`onChange`).                                                                                |
+| S6  | Cancel (Esc)                          | The original order is restored; a matching announcement; focus back on the item.                                                                                                    |
+| S7  | Auto-cancel                           | A mouse/touch press outside the list, the mouse wheel or a resize (keyboard grabs only), switching tabs or focus leaving the list during a grab → a clean cancel, no "stuck" state. |
+| S8  | Focus kept                            | After a reorder, focus stays on the same element (the moved item) and does not fall back to `<body>`.                                                                               |
+| S9  | No swallowed or doubled announcements | The first announcement after init is not swallowed; identical consecutive texts are re-announced reliably.                                                                          |
+| S10 | Focus mode only while an item is held | Idle, the list reads normally (browse mode); `role="application"` is on the wrapper **only during** a grab and is removed again after drop/cancel.                                  |
 
-## Automatisierte Prüfung (axe-core)
+## Automated checks (axe-core)
 
-`test/axe.test.js` lässt **axe-core** gegen die enhanced Liste laufen (im
-Leerlauf, während eines Grabs und im Handle-Modus) und ist Teil der CI-Suite.
-Layout-abhängige Regeln (Farbkontrast) brauchen einen echten Renderer und sind
-unter jsdom deaktiviert — Kontrast + echtes Screenreader-Verhalten bleiben dieser
-manuellen Matrix vorbehalten.
+`test/axe.test.js` runs **axe-core** against the enhanced list (idle, during a
+grab, and in handle mode) as part of the CI suite. Layout-dependent rules
+(colour contrast) need a real renderer and are disabled under jsdom — contrast
+and real screen-reader behaviour stay with this manual matrix.
 
-**ARIA-Entscheidung aus dem axe-Gegentest:** `role="button"` ist auf einem `<li>`
-(in einer `<ul>`) nicht gültig, und `aria-pressed` setzt `role="button"` voraus.
-Daraus folgt:
+**ARIA decision from the axe counter-test:** `role="button"` is not valid on an
+`<li>` (inside a `<ul>`), and `aria-pressed` requires `role="button"`. Hence:
 
-- **Mit Handle** (empfohlen): `<ul>` Liste, `<li>` listitem, der Handle ein
-  Button mit `aria-pressed` — voll axe-clean und reichster Screenreader-Zustand.
-- **Ohne Handle**: das `<li>` bleibt ein natives listitem (fokussierbar,
-  `aria-describedby`-Anleitung); der Greif-Zustand wird über die Live-Region und
-  die `--grabbed`-Klasse getragen (kein `aria-pressed`). Ebenfalls axe-clean.
+- **With a handle** (recommended): the `<ul>` is a list, each `<li>` a
+  listitem, and the handle a button with `aria-pressed` — fully axe-clean and
+  the richest screen-reader state.
+- **Without a handle**: the `<li>` stays a native listitem (focusable, with the
+  `aria-describedby` instructions); the grab state is carried by the live region
+  and the `--grabbed` class (no `aria-pressed`). Also axe-clean.
 
-**Fokusmodus / `role="application"`:** NVDA/JAWS verschlucken Leertaste und
-Pfeiltasten im Browse-Modus, deshalb schaltet sorta11y — nach dem Muster von
-GitHubs eigener Sortierliste und MDNs „kleinstmöglich, letztes Mittel"-Hinweis —
-`role="application"` **nur während eines aktiven Grabs** auf einem umschließenden
-`<div>` ein (nicht auf der `<ul>`, wo es ungültig wäre und die listitem-Semantik
-zerstörte) und nach dem Ablegen/Abbrechen wieder aus. Der Pickup läuft über die
-**Aktivierung des Griff-Buttons** (ein `click`, der auch im Browse-Modus ankommt),
-nicht über ein rohes Leertaste-`keydown`. Abschaltbar über `applicationRole:false`
-bzw. `data-application-role="false"`. axe bleibt im Ruhe- **und** im Greif-Zustand
-sauber (Test: `test/application.test.js`).
+**Focus mode / `role="application"`:** NVDA and JAWS swallow Space and the
+arrow keys in browse mode. Following the pattern of GitHub's own sortable lists
+and MDN's "as small as possible, last resort" guidance, sorta11y switches
+`role="application"` on a wrapping `<div>` **only during an active grab** (not
+on the `<ul>`, where it would be invalid and destroy the listitem semantics)
+and off again after drop/cancel. Pickup runs through the **handle button's
+activation** (a `click`, which also arrives in browse mode), not through a raw
+Space `keydown`. Opt out with `applicationRole: false` or
+`data-application-role="false"`. axe stays clean idle **and** mid-grab (test:
+`test/application.test.js`).
 
-> **Manuell zu prüfen (S2/S3):** Die „aufgenommen"/„verschoben"-Ansagen der
-> Live-Region feuern, _während_ der Vorfahr `role="application"` trägt. NVDA/JAWS
-> behandeln Live-Regionen innerhalb einer Application-Region uneinheitlich —
-> deshalb explizit gegenprüfen, dass diese Ansagen im Fokusmodus tatsächlich
-> ankommen (nicht nur der Fokuswechsel).
+> **Verify manually (S2/S3):** the live region sits **outside** the
+> application wrapper (as its next sibling), because NVDA and JAWS can handle
+> live regions inside an active application region inconsistently. Check
+> explicitly that the "picked up" / "moved" announcements actually arrive in
+> focus mode — not just the focus change.
 
-**Gemessener Befund (2026-07-08, AT-SPI „press" gegen beide Engines — derselbe
-Engine-Pfad, den NVDA/JAWS unter Windows über IAccessible2/UIA treiben):** Die
-AT-Aktivierung eines Griff-Buttons kommt **nicht** als Tastatur-Klick
-(`detail 0`) an, sondern:
+**Measured (2026-07-08, AT-SPI "press" against both engines — the same engine
+path NVDA/JAWS drive on Windows through IAccessible2/UIA):** a screen reader's
+activation of a handle button does **not** arrive as a keyboard click
+(`detail 0`), but as:
 
 - **Chromium:** `pointerdown(0) → mousedown(0) → pointerup(0) → mouseup(0) →
-click(detail 1)` — die synthetische Pointer-Sequenz macht die Aktivierung von
-  einem echten Maus-Tap ununterscheidbar.
-- **Gecko:** `mousedown(1) → mouseup(1) → click(detail 1)` — ohne Pointer-Events.
+click(detail 1)` — the synthetic pointer sequence makes the activation
+  indistinguishable from a real mouse tap.
+- **Gecko:** `mousedown(1) → mouseup(1) → click(detail 1)` — no pointer
+  events.
 
-Der Pickup verlangt deshalb kein `detail === 0` mehr: Ein Klick zählt als
-Aktivierung, sofern ihn keine jüngste Pointer-Aktivität auf demselben Item
-erklärt. Regressionstests spielen beide gemessenen Sequenzen nach
-(`test/pointer.test.js`, „assistive-technology activation clicks"). Damit nimmt
-auch ein `<span role="button">`-Griff den Browse-Modus-Pickup über denselben
-Klick-Pfad (unit-getestet; manuell gegenprüfen). Einschränkung: Mit
-`clickToGrab: false` bleibt der Browse-Modus-Pickup in Chromium gated (die
-AT-Aktivierung sieht dort wie ein Maus-Tap aus) — dort in den Fokusmodus
-wechseln.
+Pickup therefore does not require `detail === 0`: a click counts as an
+activation unless recent pointer activity on the same item explains it.
+Regression tests replay both measured sequences (`test/pointer.test.js`,
+"assistive-technology activation clicks"). The same click path should also give
+a `<span role="button">` handle browse-mode pickup — verify manually.
+Limitation: with `clickToGrab: false`, browse-mode pickup stays blocked in
+Chromium (the AT activation looks like a mouse tap there); users switch to
+focus mode instead.
 
-**Moduswechsel via Fokus-Umzug (2026-07-09, nach manueller NVDA-Verifikation
-von S3):** NVDA wertet Browse- vs. Fokusmodus nur bei **Fokus-Ereignissen**
-neu aus. Beim Pickup sitzt der Fokus aber bereits auf dem Grab-Target — ein
-einfaches `focus()` ist ein No-op, und auch ein `blur()`+`focus()` hilft
-nicht: Die Engines bündeln Accessibility-Updates zu Diffs, ein Refocus
-desselben Knotens ist netto null und wird wegkoalesziert (per AT-SPI
-gemessen: kein `focused`-Gain erreicht je den Bus). Deshalb zieht der Grab
-den Fokus **auf die Liste selbst** um (temporäres `tabindex="-1"`, wird beim
-Loslassen wieder entfernt) — ein echter, dauerhafter Fokuswechsel in die
-Application-Region, der die Koaleszierung überlebt (Bus-verifiziert:
-`focused d1=1` auf der Liste). Die Pfeiltasten funktionieren weiter, weil der
-Listen-Keydown-Handler das gegriffene Item unabhängig vom Event-Ziel bewegt;
-Drop/Escape geben den Fokus ans Grab-Target zurück. Hörbarer Nebeneffekt:
-NVDA sagt beim Aufnehmen kurz den Listennamen an, dann folgt die
-„aufgenommen"-Ansage. S2/S3/S9 nach diesem Fix erneut manuell verifizieren.
+**Mode switch via a focus move (2026-07-09, after manual NVDA verification of
+S3):** NVDA re-evaluates browse vs focus mode only on **focus events**. At
+pickup, though, focus already sits on the grab target — a plain `focus()` is a
+no-op, and a `blur()` + `focus()` does not help either: the engines batch
+accessibility updates into diffs, so refocusing the same node nets out to
+nothing and is coalesced away (measured via AT-SPI: no `focused` gain ever
+reaches the bus). So the grab moves focus **onto the list itself** (a temporary
+`tabindex="-1"`, removed again on release) — a real, lasting focus change into
+the application region that survives the coalescing (verified on the bus:
+`focused d1=1` on the list). The arrow keys keep working because the list's
+keydown handler moves the grabbed item regardless of the event target;
+drop/Escape return focus to the grab target. Audible side effect: on pickup,
+NVDA briefly announces the list's name before the "picked up" announcement.
+Re-verify S2/S3/S9 manually after this change.
 
-## Ergebnis-Protokoll (manuell)
+## Results log
 
-Pro Lauf wird hier (oder in einer verlinkten Datei) eine Tabelle
-Kombination × Szenario mit ✅ / ⚠️ / ❌ + Notiz festgehalten — als Portfolio-Beleg
-und Regressionsbasis.
+Each run is recorded here (or in a linked file) as a combination × scenario
+table with ✅ / ⚠️ / ❌ and a note, as a regression baseline.
 
-| Datum      | Screenreader + Browser         | Szenarien      | Ergebnis | Notiz                                                                                                                                                                                                                                    |
-| ---------- | ------------------------------ | -------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-07-09 | NVDA + Chrome/Edge (Windows)\* | S2, S3, S5, S6 | ✅       | Browse-Modus-Pickup per Leertaste/Enter am Handle, Pfeiltasten bewegen nach automatischem Fokusmodus-Wechsel, Ablegen + Escape ok. Getestet auf einer Produktions-Formularintegration (Handles via `fromSelect`, `clickToGrab` Default). |
+| Date       | Screen reader + browser        | Scenarios      | Result | Note                                                                                                                                                                                                                        |
+| ---------- | ------------------------------ | -------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-09 | NVDA + Chrome/Edge (Windows)\* | S2, S3, S5, S6 | ✅     | Browse-mode pickup with Space/Enter on the handle, arrow keys move after the automatic switch to focus mode, drop and Escape OK. Tested on a production form integration (handles via `fromSelect`, default `clickToGrab`). |
 
-\* Nicht identisch mit Matrix-Kombination #1/#2 — die offiziellen Läufe
-(NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari) stehen weiterhin aus.
+\* Not identical to matrix combination #1 or #2 — the official runs (NVDA +
+Firefox, JAWS + Chrome, VoiceOver + Safari) are still pending.

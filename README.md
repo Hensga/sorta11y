@@ -59,6 +59,10 @@ Or load the UMD file straight from a CDN — no build step required:
 <script src="https://cdn.jsdelivr.net/npm/sorta11y@alpha/src/sorta11y.js"></script>
 ```
 
+The moving `@alpha` tag is for quick trials. In production, pin an exact
+version and add Subresource Integrity — see
+[Installation](https://hensga.github.io/sorta11y/docs/installation/).
+
 Optional locale files live under `sorta11y/locales/*` — see
 [Internationalisation](#internationalisation).
 
@@ -91,12 +95,13 @@ const list = Sorta11y.create(document.querySelector("#my-list"), {
   },
 });
 
-// Or declaratively: mark lists with [data-sorta11y] (+ data-* options) and call
+// Or declaratively: mark lists with [data-sorta11y] (+ data-handle) and call
 Sorta11y.autoInit();
 ```
 
 sorta11y works inside any framework that renders a real `<ul>` — call
-`list.refresh()` after the framework re-renders the items. There are no
+`list.refresh()` after the framework re-renders the items. If the re-render
+replaced the focused item with a new node, restore focus yourself. There are no
 wrapper packages yet.
 
 ## Why
@@ -127,8 +132,9 @@ _no_ deprecated `aria-grabbed` / `aria-dropeffect`.
   announcement is never swallowed.
 - 1-indexed announcements ("Position 3 of 8") in **your own wording** via the
   `labels` option (full i18n).
-- **Focus restoration** by stable `data-id` after a reorder — focus never
-  jumps to `<body>`.
+- **Focus stays put** after a keyboard, pointer or `sort()` reorder: items are
+  moved, not re-created, so the focused item keeps focus and it never falls
+  back to `<body>`.
 - Honours `prefers-reduced-motion` (instant reposition instead of slide).
 
 The same grab / move / drop model works for a **single pointer** (mouse,
@@ -151,8 +157,8 @@ guides.
 ### Options
 
 Three of these can also be set declaratively on the list when using `autoInit`:
-`data-handle`, `data-rtl` and `data-application-role`. The rest need an options
-object passed to `Sorta11y.create()`.
+`data-handle`, `data-application-role` and the reserved `data-rtl`. The rest
+need an options object passed to `Sorta11y.create()`.
 
 | Option            | Default                        | What it does                                                                                                                 |
 | ----------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -168,46 +174,51 @@ object passed to `Sorta11y.create()`.
 | `easing`          | `"cubic-bezier(0.2, 0, 0, 1)"` | Easing for the slide animation.                                                                                              |
 | `announceTotal`   | `true`                         | Include "of Y" in position announcements.                                                                                    |
 | `liveness`        | `"polite"`                     | `aria-live` value for the announcement region.                                                                               |
-| `rtl`             | `"auto"`                       | Right-to-left phrasing; `"auto"` follows the document/element direction.                                                     |
-| `dataIdAttr`      | `"data-id"`                    | Attribute that identifies items (focus restore, `toArray`, `sort`).                                                          |
+| `rtl`             | `"auto"`                       | Reserved — currently has no effect.                                                                                          |
+| `dataIdAttr`      | `"data-id"`                    | Attribute that identifies items for `toArray()` and `sort()`.                                                                |
 | `grabbedClass`    | `null`                         | Extra class(es) on the item during a keyboard grab.                                                                          |
 | `draggingClass`   | `null`                         | Extra class(es) on the item during a pointer drag.                                                                           |
 | `labels`          | `null`                         | Your own announcement strings (full i18n) — always wins.                                                                     |
 | `locale`          | `null`                         | Pick a registered locale for the announcements.                                                                              |
-| `onStart`         | `null`                         | Same event object, fired when an item is picked up.                                                                          |
-| `onChange`        | `null`                         | `({ item, oldIndex, newIndex, order, source }) => {}` after a committed reorder.                                             |
+| `onStart`         | `null`                         | Fired when an item is picked up (same event object as `onChange`).                                                           |
+| `onChange`        | `null`                         | `({ item, oldIndex, newIndex, order, source }) => {}` after a committed reorder; `source` is `"keyboard"` or `"pointer"`.    |
 | `onEnd`           | `null`                         | Same event object, fired after every drop **and** every cancel.                                                              |
 
 ### Static methods
 
 | Method                                      | What it does                                                                    |
 | ------------------------------------------- | ------------------------------------------------------------------------------- |
-| `Sorta11y.create(el, options?)`             | Enhance a `<ul>`/`<ol>` and return the instance.                                |
+| `Sorta11y.create(el, options?)`             | Enhance a `<ul>`/`<ol>` (element or selector) and return the instance.          |
 | `Sorta11y.get(el)`                          | Return the instance attached to an element, or `null`.                          |
-| `Sorta11y.autoInit(root?)`                  | Enhance every `[data-sorta11y]` list (options via `data-*` attributes).         |
+| `Sorta11y.autoInit(root?)`                  | Enhance every `[data-sorta11y]` list (three options via `data-*` attributes).   |
 | `Sorta11y.fromSelect(select, options?)`     | Build a sortable list from a `<select multiple>` and keep it mirrored.          |
 | `Sorta11y.mirrorToSelect(evt, select)`      | Mirror an `onChange` order into a hidden `<select multiple>` for plain submits. |
 | `Sorta11y.setDefaultLabels(labelsOrLocale)` | Set the default announcement labels (object or registered locale name).         |
 
-`fromSelect` accepts all regular options plus: `handle: false` (no generated
-handle button), `handlePosition: "left" | "right"`, `handleLabel(text)` (the
-handle's accessible name) and `renderItem(li, option)` (custom row styling).
-Details: [Enhancing `<select multiple>`](https://hensga.github.io/sorta11y/docs/guides/select/).
+`fromSelect` accepts all regular options plus `label` (the list's accessible
+name; defaults to the select's own `aria-labelledby`, `aria-label` or
+`<label>`), `keepSelected`, `listClass`, `handle: false` (no generated
+handle button), `handleClass`, `handleText`, `handlePosition: "left" | "right"`,
+`handleLabel(text, option)` (the handle's accessible name) and
+`renderItem(li, option)` (custom row content and styling). The returned
+instance's `.sourceSelect` is the original select. Details:
+[Enhancing `<select multiple>`](https://hensga.github.io/sorta11y/docs/guides/select/).
 
 ### Instance methods
 
-| Method                  | What it does                                                                     |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `refresh()`             | Re-resolve items and re-apply ARIA + roving tabindex after external DOM changes. |
-| `toArray()`             | Current order as an array of `data-id`s.                                         |
-| `sort(order, animate?)` | Reorder to the given array of ids, optionally with the slide animation.          |
-| `option(name, value?)`  | Read (1 arg) or live-update (2 args) an option.                                  |
-| `destroy()`             | Remove all enhancements, listeners and ARIA wiring (idempotent).                 |
+| Method                  | What it does                                                              |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `refresh()`             | Re-resolve items and re-apply ARIA + tabindex after external DOM changes. |
+| `toArray()`             | Current order as an array of `data-id`s.                                  |
+| `sort(order, animate?)` | Reorder to the given array of ids, optionally with the slide animation.   |
+| `option(name, value?)`  | Read (1 arg) or live-update (2 args) an option.                           |
+| `destroy()`             | Remove all enhancements, listeners and ARIA wiring (idempotent).          |
 
 ## Internationalisation
 
 Announcements default to **English**. Other languages are opt-in files under
-`src/locales/` that register on `Sorta11y.locales`:
+`src/locales/`; loading one registers it on `Sorta11y.locales` — via a
+`<script>` tag or `import "sorta11y/locales/de"` alike:
 
 ```html
 <script src="sorta11y.js"></script>
@@ -296,9 +307,12 @@ passed the core scenarios (2026-07-09); the three official matrix runs
 - On touch, a **no-handle** list can't scroll the page via its items
   (`touch-action: none`) — use a handle for long lists.
 - Screen-reader **browse-mode pickup** needs a real `<button>` handle; without
-  one, AT users must switch to focus mode manually.
+  a handle, AT users must switch to focus mode manually.
 - The focus-mode wrapper `<div class="s11y-app">` adds one DOM level around
   the list, which can affect flex/grid layouts.
+- With `clickToGrab: false`, browse-mode pickup does not work in Chromium (the
+  screen reader's activation looks like a mouse tap there); users switch to
+  focus mode instead.
 
 The reasoning behind each of these lives in
 [Known limitations](https://hensga.github.io/sorta11y/docs/reference/limitations/).
@@ -312,6 +326,9 @@ of the pending combinations in the [AT test matrix](./docs/at-test-matrix.md)
 (NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari), please report your
 findings — with scenario numbers and AT/browser versions.
 
+Please report security vulnerabilities privately, not in public issues — see
+[SECURITY.md](./SECURITY.md).
+
 ## Development
 
 The library:
@@ -324,8 +341,9 @@ npm run format     # Prettier over the repo, docs site included
 npm run demo       # quick serve → http://localhost:8090/demo/
 ```
 
-The documentation site lives in `website/` as its own npm project, so the
-library's own `package.json` stays free of a build toolchain:
+The documentation site lives in `website/` as its own npm project (Astro needs
+Node ≥ 22.12), so the library's own `package.json` stays free of a build
+toolchain:
 
 ```bash
 npm --prefix website install    # Astro + Starlight

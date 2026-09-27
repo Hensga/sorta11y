@@ -46,10 +46,20 @@ Pickup is initiated by the **handle button's activation** — a `click`, which
 survives browse mode — rather than by a raw <kbd>Space</kbd> keydown. This is why
 a real `<button>` handle is recommended for full screen-reader support.
 
+Engaging the role is not enough on its own: NVDA and JAWS re-evaluate browse vs
+focus mode only when focus _moves_, and at pickup focus already sits on the
+grab target. So pickup moves focus onto the list itself (via a temporary
+`tabindex="-1"`, removed again afterwards; a `tabindex` you set yourself is left
+alone), inside the freshly engaged application region. Focus returns to the
+grab target as the item moves, and on drop or cancel. Blurring and refocusing
+the same element does not work — browsers coalesce it before it reaches the
+screen reader. The measurements behind this are in the AT test matrix.
+
 Opt out with `applicationRole: false` (or `data-application-role="false"`). ARIA
 requires application regions to be named; the wrapper mirrors the list's own
-`aria-label` / `aria-labelledby`, falling back to the `applicationLabel` string
-("Sortable list") when the list has neither.
+name — its `aria-labelledby` (unless it references no existing element), else
+its `aria-label` — falling back to the `applicationLabel` string ("Sortable
+list") when the list has neither.
 
 :::note[The wrapper is persistent]
 The `<div class="s11y-app">` stays in the DOM even when the role is not engaged —
@@ -63,6 +73,10 @@ Each instance owns **one** live region, `aria-live="polite"` by default and
 configurable via the `liveness` option. It is inserted when the list is enhanced,
 not when the first announcement happens — a region created and filled in the same
 tick is frequently missed by screen readers.
+
+The live region and the hidden instructions sit _next to_ the `.s11y-app`
+wrapper, not inside it: live regions nested in an active application region
+can be announced inconsistently by NVDA and JAWS.
 
 Every committed change goes through it: keyboard pickups, moves, drops and
 cancels, **and** their pointer equivalents. There is no path through the library

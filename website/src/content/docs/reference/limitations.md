@@ -14,8 +14,41 @@ real `<button>`. A no-handle list is still fully keyboard-operable, but a
 screen-reader user has to switch to focus mode manually before they can pick an
 item up.
 
-A non-`<button>` handle stays keyboard-operable via <kbd>Space</kbd>, but does not
-get the browse-mode click pickup. **Prefer a real `<button>`.**
+A non-`<button>` handle (promoted to `role="button"`) stays keyboard-operable
+via <kbd>Space</kbd> and <kbd>Enter</kbd>. In principle, a screen reader's
+browse-mode activation reaches it through the same click path as a button, but
+that has not been verified with a real screen reader yet. **Prefer a real
+`<button>`.**
+
+## `clickToGrab: false` blocks browse-mode pickup in Chromium
+
+A screen reader's activation of a handle button does not arrive as a keyboard
+click. Chromium prefixes it with a synthetic pointer tap, which makes it
+indistinguishable from a mouse tap — and `clickToGrab: false` switches taps off.
+In Chromium, browse-mode users then have to switch to focus mode before they can
+pick an item up. Firefox sends the activation without pointer events and is not
+affected; Safari has not been measured yet. Keep `clickToGrab` on unless you
+really need a drag-only pointer.
+
+## App changes during a grab
+
+If the app adds or removes items while one is held (and calls `refresh()`), a
+cancel keeps those changes. If it only **reorders** existing items mid-grab, a
+cancel restores the order from the moment of pickup, undoing the app's reorder.
+
+## Tap holds and left-side scrollbars
+
+A tap hold tells a scrollbar press apart from a tap outside the list, so that
+scrolling doesn't release the hold. A scrollbar on the left — as in some
+right-to-left layouts — is not recognised as one, so clicking it without
+dragging may release the hold.
+
+## Focus across framework re-renders
+
+sorta11y keeps focus on the element that had it, which holds for its own
+reorders and `sort()`. If a framework re-renders the list with **new** nodes,
+`refresh()` picks them up, but focus is not moved to the replacement for the
+previously focused item — the app has to restore it.
 
 ## The persistent `.s11y-app` wrapper
 
@@ -42,7 +75,9 @@ timing without measuring it is how these bugs get written in the first place.
 
 Deferred on purpose: programmatic focus can scroll the page, and a naive
 scroll-cancel would abort grabs the user never abandoned. `wheel` still cancels,
-which covers the intentional case.
+which covers the intentional case. A grab picked up with a tap is not cancelled
+by `wheel` or `resize` at all, so a pointer user can scroll to a distant drop
+target.
 
 ## `touch-action` on no-handle lists
 
@@ -56,7 +91,10 @@ lists, configure a handle. See
 These are not "not yet" — they are "not this library":
 
 - **Nested / tree lists.** An accessible tree reorder needs a different
-  interaction model, not a wider version of this one.
+  interaction model, not a wider version of this one. A sortable list placed
+  inside another list's item is kept independent — keys and presses inside the
+  inner list never operate the outer one — but items cannot move between the
+  levels.
 - **Transfer between lists.** Same reason.
 - **Grid or horizontal reordering.** The announcement model is built around a
   single linear position ("Position 3 of 8"), which does not survive two

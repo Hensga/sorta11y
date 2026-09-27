@@ -28,7 +28,7 @@ browse mode — see [Accessibility model](./guides/accessibility.md).
 ```
 
 The `aria-label` on the list gives the widget a name. The `data-id` values are
-what `toArray()`, `sort()` and focus restoration work with.
+what `toArray()`, `sort()` and the `order` in every event report.
 
 ## 2. Enhance it
 
@@ -51,8 +51,10 @@ while an item is held, and not at all when the user cancels with <kbd>Esc</kbd>.
 
 ## 3. Or go declarative
 
-Mark lists in the markup and let sorta11y find them. Every option has a `data-*`
-equivalent (see [Options](./reference/options.md)):
+Mark lists in the markup and let sorta11y find them. Only three options can be
+set this way — `data-handle`, `data-application-role` and the reserved
+`data-rtl`; everything else needs `Sorta11y.create()` with an options object
+(see [Options](./reference/options.md#declarative-markup)):
 
 ```html
 <ul data-sorta11y data-handle=".drag-handle" aria-label="Reorder tasks">
@@ -70,12 +72,15 @@ init script per page.
 
 sorta11y works inside anything that renders a real `<ul>`. The one rule: after
 the framework re-renders the items, call `list.refresh()` so ARIA attributes and
-the roving tabindex are re-applied to the new nodes.
+the tab stops are re-applied to the new nodes.
 
 ```js
 // after your framework has patched the DOM
 list.refresh();
 ```
+
+sorta11y keeps focus on the element that had it, so if a re-render **replaces**
+the focused item with a new node, move focus to the new node yourself.
 
 There are no wrapper packages yet. If you unmount the list, call
 `list.destroy()` — it is idempotent and removes every listener, attribute and
@@ -88,7 +93,7 @@ wrapper the library added.
 - Pointer drag **and** a tap-to-place alternative —
   [Pointer & touch](./guides/pointer-and-touch.md)
 - Every committed move announced through a polite live region
-- Focus restored to the moved item afterwards
+- Focus kept on the moved item after every reorder
 
 What you do **not** get automatically is a visible picked-up state. The library
 ships state classes but no visual design — add that next in

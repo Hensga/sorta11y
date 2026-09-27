@@ -42,7 +42,7 @@ ARIA violations fail the build. That catches structural mistakes — it does not
 tell you whether a real screen reader announces something sensibly. Automated
 accessibility testing is a floor, not a ceiling.
 
-Coverage is enforced at a 80% minimum via `npm run coverage`.
+Coverage is enforced at an 80% minimum via `npm run coverage`.
 
 ## Helping
 

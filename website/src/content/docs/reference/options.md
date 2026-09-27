@@ -13,7 +13,7 @@ at runtime with `list.option(name, value)`.
 | -------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `itemSelector` | `"> li"`    | Which children count as items. Changing it re-resolves the list.                                                                |
 | `handle`       | `null`      | Selector for a drag handle inside each item (a real `<button>` is recommended). Without one, the whole item is the grab target. |
-| `dataIdAttr`   | `"data-id"` | Attribute that identifies items — used by focus restore, `toArray()` and `sort()`.                                              |
+| `dataIdAttr`   | `"data-id"` | Attribute that identifies items for `toArray()` and `sort()`.                                                                   |
 
 ## Interaction layers
 
@@ -34,7 +34,7 @@ at runtime with `list.option(name, value)`.
 | `liveness`        | `"polite"` | `aria-live` value for the announcement region. Applied immediately when changed.                                   |
 | `labels`          | `null`     | Your own announcement strings — always wins over `locale`.                                                         |
 | `locale`          | `null`     | Pick a registered locale for the announcements.                                                                    |
-| `rtl`             | `"auto"`   | Right-to-left phrasing. `"auto"` follows the document/element direction.                                           |
+| `rtl`             | `"auto"`   | Reserved — currently has no effect. See [RTL](../guides/i18n.md#rtl).                                              |
 
 ## Presentation
 
@@ -63,7 +63,7 @@ All three receive the same event object:
 const evt = {
   item, // HTMLElement — the item that moved
   oldIndex, // number — 0-indexed position before
-  newIndex, // number — 0-indexed position after
+  newIndex, // number — 0-indexed position after (-1: removed, see below)
   order, // string[] — the full order of data-ids afterwards
   source, // "keyboard" | "pointer"
 };
@@ -71,6 +71,38 @@ const evt = {
 
 Use `onChange` to persist. Use `onEnd` for teardown that has to run either way
 (clearing a busy flag, say), and remember it fires on cancels too.
+
+### Timing
+
+The library finishes its own work before it calls you. `onStart` fires after
+focus has moved and the pickup has been announced; `onChange` and `onEnd` fire
+after focus is back on the grab target and the grab has been cleaned up. So a
+callback that throws cannot leave the list half-grabbed, and focus you move
+inside a callback stays where you put it.
+
+### `source`
+
+`source` names the input that performed the step:
+
+- `onStart` reports how the item was picked up.
+- `onChange` and `onEnd` after a drop report how it was dropped — a tap pickup
+  followed by a keyboard drop gives `"pointer"`, then `"keyboard"`.
+- `onEnd` after a cancel reports how the item was picked up, since a cancel
+  (<kbd>Esc</kbd>, a press elsewhere, focus leaving the list) is no input of its
+  own.
+
+Mouse, touch and pen drags and taps are `"pointer"`; keys and a `<button>`
+handle's activation click are `"keyboard"`. `source` describes the input path,
+not the person: a screen reader's activation arrives as a click in Firefox
+(`"keyboard"`) but as a synthetic pointer tap in Chromium (`"pointer"`), so don't
+use it to detect assistive technology.
+
+### When the held item disappears
+
+If the app removes the held or dragged item and calls `refresh()`, the
+interaction ends: `onEnd` fires with `newIndex: -1`, `onChange` does not fire,
+and nothing is announced (the stale "Picked up…" text is cleared). See
+[`refresh()`](./methods.md#refresh).
 
 ## Declarative markup
 
@@ -80,7 +112,7 @@ Use `onChange` to persist. Use `onEnd` for teardown that has to run either way
 | Attribute               | Maps to                                          |
 | ----------------------- | ------------------------------------------------ |
 | `data-handle`           | `handle`                                         |
-| `data-rtl`              | `rtl`                                            |
+| `data-rtl`              | `rtl` (reserved, currently no effect)            |
 | `data-application-role` | `applicationRole` (only `"false"` has an effect) |
 
 ```html

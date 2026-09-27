@@ -23,27 +23,66 @@ Sorta11y.fromSelect("#groups", {
 What it does:
 
 1. Builds one `<li data-id="…">` per `<option>`, using the option's `value` as
-   the id and its text as the row content.
+   the id and its text as the row content, and inserts the new `<ul>` right
+   before the select.
 2. Generates a handle `<button>` per row, for full screen-reader support.
-3. Hides the original `<select>` in the DOM but keeps it in the form.
-4. Mirrors every reorder back into the select's option order.
+3. Hides the original `<select>` (`hidden` and `aria-hidden="true"`) but keeps
+   it in the DOM and in the form.
+4. Mirrors every reorder back into the select's option order, then calls your
+   own `onChange`, if you passed one.
 
 Every option is kept `selected` by default, so a plain submit sends them all, in
 the new order.
+
+Like `create()`, it returns the instance: its `.el` is the generated `<ul>`, and
+`.sourceSelect` is the original `<select>`. If the target is not a `<select>`
+(or the selector matches nothing), it returns `null`.
+
+## Naming the list
+
+The generated list needs an accessible name, like any list you enhance. It takes
+the first one it finds:
+
+1. the `label` option,
+2. the select's `aria-labelledby` — copied as-is, so the list points at the
+   same labelling elements; ignored if none of the ids it references exists,
+3. the select's own `aria-label`,
+4. the text of the select's `<label>` — `for="…"` or wrapping; whitespace is
+   collapsed, and the select's own option texts are left out.
+
+This follows the order of the accessible-name computation, where
+`aria-labelledby` beats `aria-label`. A select that is already properly labelled
+therefore needs nothing extra:
+
+```html
+<label for="groups">Group order</label>
+<select id="groups" multiple>
+  …
+</select>
+```
 
 ## `fromSelect`-only options
 
 On top of every regular [option](../reference/options.md), it accepts:
 
-| Option                   | Default     | What it does                                         |
-| ------------------------ | ----------- | ---------------------------------------------------- |
-| `handle`                 | _generated_ | `false` skips the generated handle button entirely   |
-| `handlePosition`         | `"left"`    | `"right"` puts the handle at the row end             |
-| `handleLabel(text)`      | —           | Returns the handle's accessible name for a given row |
-| `renderItem(li, option)` | —           | Hook for row styling and custom content              |
+| Option                      | Default             | What it does                                                                       |
+| --------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `label`                     | _from the select_   | Accessible name for the generated list — see [above](#naming-the-list)             |
+| `keepSelected`              | `true`              | Keep every option `selected`, so a plain submit carries the full order             |
+| `listClass`                 | —                   | Class(es) for the generated `<ul>`                                                 |
+| `handle`                    | `true`              | `false` skips the generated handle button; the whole row becomes the grab target   |
+| `handleClass`               | `"s11y-handle"`     | Class of the generated handle — also the `handle` selector passed on to `create()` |
+| `handleText`                | `"⠿"`               | The handle's visible glyph                                                         |
+| `handlePosition`            | `"left"`            | `"right"` puts the handle at the row end                                           |
+| `handleLabel(text, option)` | _the option's text_ | Returns the handle's accessible name for a row                                     |
+| `renderItem(li, option)`    | —                   | Called after each row is built — for row styling and custom content                |
 
-`handleLabel` is worth setting — the default name is generic, and a screen-reader
-user hearing "Move, button" eight times in a row learns nothing:
+Here `handle` is a switch, not a selector: the handle is always the generated
+button.
+
+By default each handle is named after its option's text, so every handle in the
+list is distinguishable. `handleLabel` lets you phrase the name as an action
+instead — "Move Marketing" rather than just "Marketing":
 
 ```js
 Sorta11y.fromSelect("#groups", {
@@ -55,8 +94,8 @@ Sorta11y.fromSelect("#groups", {
 
 The handle at the row end is easier to reach with a thumb on touch, and the row
 then reads content-first — the name before the control. The generated button also
-gets a `s11y-handle--left` / `s11y-handle--right` modifier class to style
-against.
+gets a `--left` / `--right` modifier class to style against — by default
+`s11y-handle--left` / `s11y-handle--right`.
 
 ## Mirroring an existing list into a select
 

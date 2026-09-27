@@ -22,6 +22,13 @@ Every grab target is a **tab stop**, so <kbd>Tab</kbd> walks the list the way it
 walks any other set of controls. Idle arrow keys are deliberately _not_
 intercepted — the page still scrolls normally until something is actually held.
 
+While an item is held, <kbd>Space</kbd> (and <kbd>Enter</kbd> with a handle)
+drops it wherever focus sits in the list — on its handle, on the list itself
+right after pickup, or on another item's handle. Holding <kbd>Space</kbd> or
+<kbd>Enter</kbd> down counts as one press, so the key's auto-repeat never picks
+up and drops over and over; a held arrow key, on the other hand, keeps moving
+the item.
+
 ### <kbd>Enter</kbd> in detail
 
 <kbd>Enter</kbd> behaves like <kbd>Space</kbd> **when there is a handle**, because
@@ -35,13 +42,40 @@ button:
 - A **no-handle** `<li>` stays deliberately <kbd>Enter</kbd>-inert: it never
   grabs, and — importantly — never submits a surrounding form by accident.
 
+### Controls inside a no-handle item
+
+In a list without a handle, keys pressed inside a nested control — a link, a
+button, a form field — are left to that control while nothing is held:
+<kbd>Space</kbd> types a space into an input instead of grabbing the item, and
+<kbd>Enter</kbd> still follows the link.
+
 ### Modifier keys cancel
 
-Any modified keystroke while an item is held (<kbd>Ctrl</kbd>, <kbd>Alt</kbd>,
-<kbd>Meta</kbd>, <kbd>Shift</kbd> + key) **cancels the grab** and restores the
-original order. The reasoning: a modified key is almost always a browser or
-screen-reader shortcut, and the user should not end up with a half-finished
-reorder because they triggered one.
+Pressing any of the keys in the table above together with <kbd>Ctrl</kbd>,
+<kbd>Alt</kbd>, <kbd>Meta</kbd> or <kbd>Shift</kbd> while an item is held
+**cancels the grab** and restores the original order. The reasoning: a modified
+key is almost always a browser or screen-reader shortcut, and the user should
+not end up with a half-finished reorder because they triggered one.
+
+### Automatic cancel
+
+A grab is also cancelled — original order restored, the cancel announced,
+`onEnd` fired — when something else takes over:
+
+- a mouse, touch or pen press **outside** the list (a press inside it is a
+  placement tap, see [Pointer & touch](./pointer-and-touch.md)),
+- the mouse wheel or a window resize,
+- the page being hidden (switching tabs),
+- focus leaving the list — a dialog or a validation message taking it, say; the
+  focus is left where it went,
+- a grab starting in another sorta11y list — only one item can be held at a
+  time, page-wide.
+
+Plain `scroll` events deliberately do not cancel a grab — see
+[Known limitations](../reference/limitations.md). A grab picked up with a
+**tap** is more forgiving about outside presses, the wheel and resizes, so a
+pointer user can scroll to a distant drop target — see
+[Pointer & touch](./pointer-and-touch.md#scrolling-while-an-item-is-held).
 
 ## What gets announced
 
@@ -61,6 +95,14 @@ can be dropped with `announceTotal: false`, and every string is replaceable, see
 The item's name comes from its `aria-label`, its `data-label`, or its trimmed
 text content — in that order.
 
+## Scrolling
+
+Each keyboard move (arrows, <kbd>Home</kbd> / <kbd>End</kbd>), a tap placement
+and a keyboard cancel that restores the order scroll the moved item into view —
+minimally (`block: "nearest"`), and honouring the page's `scroll-padding` so a
+sticky header doesn't cover it (see [Styling](./styling.md#sticky-headers)).
+Pickup, drop and `sort()` never scroll the page.
+
 ## Instructions for screen readers
 
 Each list gets a visually hidden instructions element wired up with
@@ -75,14 +117,23 @@ other announcement.
 
 ## Focus after a reorder
 
-When items move, the DOM nodes move with them — which normally throws focus back
-to `<body>`. sorta11y restores focus to the moved item by its stable `data-id`
-(configurable via `dataIdAttr`) after the reorder, so keyboard users keep their
-place.
+sorta11y reorders by moving the existing DOM nodes; it never re-creates items.
+Focus stays on the element that had it — after a keyboard move, a pointer drag
+or a programmatic `sort()` — so keyboard users keep their place and focus never
+falls back to `<body>`.
 
-If the item is a non-`<button>` grab target that would otherwise lose
-focusability, it is temporarily anchored at `tabindex="-1"` and the attribute is
-shed again afterwards — no permanent markup change.
+Focus is tracked by element, not by `data-id`. If a framework re-renders the
+list with **new** nodes, call `refresh()` and move focus to the new node
+yourself — the library cannot know which fresh element stands in for the old
+one.
+
+At pickup, focus briefly moves onto the list itself so screen readers switch
+into focus mode; it returns to the grab target on every move, on drop and on
+cancel. See [Accessibility model](./accessibility.md).
+
+When `refresh()` or `destroy()` strips a focused non-`<button>` grab target of
+its `tabindex`, the target is anchored at `tabindex="-1"` until its next blur,
+so focus stays put — no permanent markup change.
 
 ## Motion
 

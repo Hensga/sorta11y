@@ -59,6 +59,18 @@ keyboard users have no idea what they are moving. A minimal, honest treatment:
 Do not rely on colour alone (WCAG 1.4.1) — pair it with a shadow, a border, an
 offset, or a scale change.
 
+Check the state in forced-colors mode (Windows High Contrast) too: backgrounds
+and box shadows are overridden there, so a cue built only from them disappears.
+An outline survives, so add one:
+
+```css
+.s11y-item--grabbed,
+.s11y-item--dragging {
+  outline: 2px solid;
+  outline-offset: -2px;
+}
+```
+
 ## Utility-class frameworks
 
 For Tailwind and friends, `grabbedClass` and `draggingClass` add **your** classes
@@ -97,9 +109,9 @@ of browse-mode support — see [Accessibility model](./accessibility.md).
 
 ## Handles
 
-The library never styles handles. When `fromSelect()` generates them, they get a
-`s11y-handle--left` or `s11y-handle--right` modifier class depending on
-`handlePosition`, which is what you hook into:
+The library never styles handles. When `fromSelect()` generates them, they get
+the `s11y-handle` class (or your `handleClass`) plus a `--left` or `--right`
+modifier depending on `handlePosition`, which is what you hook into:
 
 ```css
 .s11y-handle--left {
@@ -112,6 +124,22 @@ The library never styles handles. When `fromSelect()` generates them, they get a
 
 Keep handles at least 24×24 CSS pixels (WCAG 2.5.8), and remember they are real
 buttons — they need a visible `:focus-visible` state.
+
+## Sticky headers
+
+When a keyboard move or a tap placement carries an item out of view, sorta11y
+scrolls it back in with `scrollIntoView({ block: "nearest" })`, which honours
+the page's `scroll-padding`. If your page has a sticky header, reserve its
+height there so a moved item never ends up underneath it (WCAG 2.4.11, Focus Not
+Obscured (Minimum)):
+
+```css
+html {
+  scroll-padding-top: 4rem; /* the sticky header's height */
+}
+```
+
+An item's own `scroll-margin` is honoured too.
 
 ## Motion
 

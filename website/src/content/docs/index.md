@@ -30,8 +30,8 @@ Install via the `alpha` tag and expect the API to still move.
   announcement is never swallowed.
 - **Announcements in your own wording** — labels are functions, so they
   interpolate positions and pluralise properly.
-- **Focus restoration** by stable `data-id`, so focus never falls back to
-  `<body>` after a reorder.
+- **Focus stays put** — items are moved, not re-created — so the focused item
+  keeps focus and it never falls back to `<body>` after a reorder.
 - **`prefers-reduced-motion`** honoured: instant reposition instead of a slide.
 - **Zero runtime dependencies** and no build step required to use it.
 
