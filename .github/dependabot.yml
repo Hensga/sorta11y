@@ -1,0 +1,30 @@
+# Workflow actions are pinned to commit SHAs; Dependabot keeps those pins (and
+# the dev tooling) current through grouped monthly pull requests, which CI then
+# tests like any other change.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The library itself has no runtime dependencies — this is dev tooling only.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      dev-tooling:
+        patterns: ["*"]
+
+  # The docs site is its own npm project (Astro + Starlight).
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: monthly
+    groups:
+      docs-site:
+        patterns: ["*"]
