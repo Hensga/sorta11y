@@ -1,12 +1,15 @@
 import { describe, it, expect, afterEach } from "vitest";
 import Sorta11y from "../src/sorta11y.js";
+import "./helpers/share-library-with-cjs.js"; // before the locale files
 import deLabels from "../src/locales/de.js";
 import enLabels from "../src/locales/en.js";
 import { makeList, press, SPACE, liveRegionOf } from "./helpers/dom.js";
 
 // In a browser the locale files self-register on window.Sorta11y.locales when
-// loaded via <script>. Under CommonJS/Vitest the core is not on `window`, so we
-// register manually here (importing the file gives its exported labels object).
+// loaded via <script>; under CommonJS they register on the library module,
+// which share-library-with-cjs.js makes the tests' own instance. The tests
+// below still assign Sorta11y.locales.de explicitly, so none of them depends
+// on an import side effect (importing a file gives its labels object).
 afterEach(() => {
   Sorta11y.setDefaultLabels(enLabels); // reset the global default to English
   document.body.replaceChildren();

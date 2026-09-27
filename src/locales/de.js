@@ -2,16 +2,23 @@
  * sorta11y locale: de (Deutsch)
  * @license MIT · (c) 2026 Henning Huth
  *
- * German (Deutsch) screen-reader announcements. Registers on
- * `Sorta11y.locales.de` in the browser; exports the labels object under
- * CommonJS. Each function receives { itemLabel, position, total, announceTotal,
- * order }; `position` is 1-indexed.
+ * German (Deutsch) screen-reader announcements. Loading this file registers
+ * it on `Sorta11y.locales.de` — via the browser global, or via the library
+ * module under CommonJS, Node ESM and bundlers — and exports the labels object.
+ * Each function receives { itemLabel, position, total, announceTotal, order };
+ * `position` is 1-indexed.
  */
 (function (root, factory) {
   var labels = factory();
   /* v8 ignore start -- environment registration (browser global / CommonJS) */
   if (typeof module === "object" && typeof module.exports === "object") {
     module.exports = labels;
+    // There is no window.Sorta11y here, so register on the library module
+    // itself; module caches make it the same instance the app imported. No
+    // try/catch on purpose: bundlers leave a require() inside one unconverted,
+    // which would turn the registration back into a silent no-op.
+    var lib = require("../sorta11y.js");
+    (lib.locales = lib.locales || {}).de = labels;
   }
   if (root && root.Sorta11y) {
     (root.Sorta11y.locales = root.Sorta11y.locales || {}).de = labels;

@@ -2,10 +2,11 @@
  * sorta11y locale: en (English)
  * @license MIT · (c) 2026 Henning Huth
  *
- * Registers on `Sorta11y.locales.en` in the browser; exports the labels object
- * under CommonJS. This mirrors the library's built-in default — load it only if
- * you changed the default away from English and want to switch back, or to be
- * explicit with `{ locale: 'en' }`.
+ * Loading this file registers it on `Sorta11y.locales.en` — via the browser
+ * global, or via the library module under CommonJS, Node ESM and bundlers —
+ * and exports the labels object. This mirrors the library's built-in default —
+ * load it only if you changed the default away from English and want to switch
+ * back, or to be explicit with `{ locale: 'en' }`.
  *
  * Each function receives { itemLabel, position, total, announceTotal, order };
  * `position` is 1-indexed.
@@ -15,6 +16,12 @@
   /* v8 ignore start -- environment registration (browser global / CommonJS) */
   if (typeof module === "object" && typeof module.exports === "object") {
     module.exports = labels;
+    // There is no window.Sorta11y here, so register on the library module
+    // itself; module caches make it the same instance the app imported. No
+    // try/catch on purpose: bundlers leave a require() inside one unconverted,
+    // which would turn the registration back into a silent no-op.
+    var lib = require("../sorta11y.js");
+    (lib.locales = lib.locales || {}).en = labels;
   }
   if (root && root.Sorta11y) {
     (root.Sorta11y.locales = root.Sorta11y.locales || {}).en = labels;

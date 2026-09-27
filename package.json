@@ -42,7 +42,8 @@
     "README.md"
   ],
   "sideEffects": [
-    "*.css"
+    "*.css",
+    "./src/locales/*.js"
   ],
   "publishConfig": {
     "tag": "alpha"
