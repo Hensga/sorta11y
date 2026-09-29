@@ -95,8 +95,8 @@ and the keyboard instructions become visible on the page.
   layer builds on Pointer Events with `setPointerCapture`, so there is no
   Internet Explorer support. Details in
   [Browser & AT support](./reference/support.md).
-- **Node:** only for development — Node ≥ 20 to run the test suite, ≥ 22.12 to
-  build this documentation site. The library itself runs entirely in the
+- **Node:** only for development — Node 22.22+ or 24.15+ to run the test suite
+  and to build this documentation site. The library itself runs entirely in the
   browser and has no runtime dependencies.
 
 ## Verify it works
