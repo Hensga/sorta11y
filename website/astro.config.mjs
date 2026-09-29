@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import { unified } from "@astrojs/markdown-remark";
 
 // The Pages artifact puts the landing page at /sorta11y/site/, the demo at
 // /sorta11y/demo/ and this docs build at /sorta11y/docs/. `base` has to match
@@ -65,7 +66,9 @@ export default defineConfig({
   // GitHub Pages serves directory/index.html — the default, spelled out so the
   // URL shape (/docs/installation/) is a deliberate choice, not an accident.
   build: { format: "directory" },
-  markdown: { rehypePlugins: [rehypeDocsLinks] },
+  // The link rewriter is a rehype plugin, so keep the remark/rehype (unified)
+  // pipeline; Astro's default processor since 7.3 (Sätteri) doesn't run them.
+  markdown: { processor: unified({ rehypePlugins: [rehypeDocsLinks] }) },
   integrations: [
     starlight({
       title: "sorta11y",
