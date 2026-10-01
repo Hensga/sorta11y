@@ -72,12 +72,12 @@ doesn't match the one you reviewed:
 ```html
 <link
   rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.css"
+  href="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.1/src/sorta11y.css"
   integrity="sha384-HASH_FROM_JSDELIVR"
   crossorigin="anonymous"
 />
 <script
-  src="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.0/src/sorta11y.js"
+  src="https://cdn.jsdelivr.net/npm/sorta11y@0.1.0-alpha.1/src/sorta11y.js"
   integrity="sha384-HASH_FROM_JSDELIVR"
   crossorigin="anonymous"
 ></script>

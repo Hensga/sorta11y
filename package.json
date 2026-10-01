@@ -1,6 +1,6 @@
 {
   "name": "sorta11y",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Accessible, zero-dependency vanilla-JS sortable list — keyboard reordering and pointer drag with screen-reader announcements. No framework, no jQuery, no build step.",
   "keywords": [
     "sortable",

@@ -1,6 +1,6 @@
 /*!
  * sorta11y — accessible, zero-dependency vanilla sortable list
- * @version 0.1.0-alpha.0
+ * @version 0.1.0-alpha.1
  * @license MIT
  * (c) 2026 Henning Huth · https://github.com/Hensga/sorta11y
  *
@@ -39,7 +39,7 @@
   /* v8 ignore stop */
   "use strict";
 
-  var VERSION = "0.1.0-alpha.0";
+  var VERSION = "0.1.0-alpha.1";
 
   var DRAG_THRESHOLD = 4; // px a pointer must travel before a press becomes a drag
   // px a noDrag body press may jitter and still count as a TAP. Deliberately

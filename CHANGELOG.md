@@ -6,6 +6,8 @@ All notable changes to **sorta11y** are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-10-01
+
 ### Added
 
 - **TypeScript declarations** ship with the package (`src/sorta11y.d.ts`,
@@ -106,5 +108,6 @@ First public alpha.
 More in
 [Known limitations](https://hensga.github.io/sorta11y/docs/reference/limitations/).
 
-[Unreleased]: https://github.com/Hensga/sorta11y/compare/v0.1.0-alpha.0...HEAD
+[Unreleased]: https://github.com/Hensga/sorta11y/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/Hensga/sorta11y/compare/v0.1.0-alpha.0...v0.1.0-alpha.1
 [0.1.0-alpha.0]: https://github.com/Hensga/sorta11y/releases/tag/v0.1.0-alpha.0
