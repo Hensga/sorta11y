@@ -1,0 +1,245 @@
+# The scenario IDs (S1–S10) and their expected results mirror the table in
+# docs/at-test-matrix.md — change both together.
+name: AT test report
+description: Report a screen-reader test run against the scenarios in the AT test matrix.
+title: "AT report: "
+labels: ["a11y", "at-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing sorta11y with assistive technology — it is the
+        most valuable help the project can get right now.
+
+        1. Pick a screen reader + browser combination, ideally one of the three
+           pending ones in the [AT test matrix](https://github.com/Hensga/sorta11y/blob/main/docs/at-test-matrix.md).
+           Other combinations are welcome too.
+        2. Open the [playground](https://hensga.github.io/sorta11y/site/) or
+           your own page that uses sorta11y. S2 and S5 check the handle
+           button's `aria-pressed`, so use a list with a handle for those.
+        3. Run the scenarios (each one's expected result is repeated below) and
+           rate each. Leave anything you could not run on "Not tested".
+
+        One report per combination, please. A failure, a partial result or a
+        "this was confusing" is as useful as a pass.
+
+  - type: dropdown
+    id: combination
+    attributes:
+      label: Matrix combination
+      options:
+        - "#1 NVDA + Firefox (Windows)"
+        - "#2 JAWS + Chrome (Windows)"
+        - "#3 VoiceOver + Safari (macOS)"
+        - Another combination
+    validations:
+      required: true
+
+  - type: input
+    id: screen-reader
+    attributes:
+      label: Screen reader and version
+      placeholder: e.g. NVDA 2025.3, JAWS 2026, VoiceOver (macOS 26)
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: e.g. Firefox 140
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      placeholder: e.g. Windows 11 24H2
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: sorta11y version
+      description: Run `Sorta11y.version` in the browser console, or check your `package.json`.
+      placeholder: 0.1.0-alpha.0
+    validations:
+      required: true
+
+  - type: input
+    id: test-page
+    attributes:
+      label: Test page
+      description: Which page and list did you test?
+      placeholder: e.g. the playground's "Drag handle" list, or a link to your own page
+    validations:
+      required: true
+
+  - type: dropdown
+    id: grab-target
+    attributes:
+      label: Grab target
+      description: How were the tested lists set up? Select all that apply.
+      multiple: true
+      options:
+        - With a handle button
+        - Without a handle (the whole item is the grab target)
+        - Built with Sorta11y.fromSelect()
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s1
+    attributes:
+      label: S1 — Walk the list (Tab)
+      description: "Expected: **every** item is a tab stop (Tab/Shift+Tab); the focused grab target is announced with its name and the instructions (`aria-describedby`)."
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s2
+    attributes:
+      label: S2 — Pick up (Space/Enter)
+      description: 'Expected: in **browse mode**, the handle button picks up without a manual mode switch; "picked up" is announced with the arrow-key hint; `aria-pressed=true`.'
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s3
+    attributes:
+      label: S3 — Move (↑/↓)
+      description: "Expected: the new position is announced after every move; focus stays on the moved item."
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s4
+    attributes:
+      label: S4 — To the edge (Home/End)
+      description: "Expected: jumps to the start/end with the correct position announced."
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s5
+    attributes:
+      label: S5 — Drop (Space/Enter)
+      description: 'Expected: "Dropped … Position X of Y" is announced; `aria-pressed=false`; the order is committed (`onChange`).'
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s6
+    attributes:
+      label: S6 — Cancel (Esc)
+      description: "Expected: the original order is restored; a matching announcement; focus back on the item."
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s7
+    attributes:
+      label: S7 — Auto-cancel
+      description: 'Expected: a mouse/touch press outside the list, the mouse wheel or a resize (keyboard grabs only), switching tabs or focus leaving the list during a grab → a clean cancel, no "stuck" state.'
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s8
+    attributes:
+      label: S8 — Focus kept
+      description: "Expected: after a reorder, focus stays on the same element (the moved item) and does not fall back to `<body>`."
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s9
+    attributes:
+      label: S9 — No swallowed or doubled announcements
+      description: "Expected: the first announcement after init is not swallowed; identical consecutive texts are re-announced reliably."
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: s10
+    attributes:
+      label: S10 — Focus mode only while an item is held
+      description: 'Expected: idle, the list reads normally (browse mode); `role="application"` is on the wrapper **only during** a grab and is removed again after drop/cancel.'
+      options:
+        - Pass
+        - Partial (works, with problems)
+        - Fail
+        - Not tested
+      default: 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details for anything that did not pass
+      description: Per scenario — what you did, what was announced (as close to verbatim as you can) and what you expected instead.
+      placeholder: |
+        S3: after ArrowDown, NVDA said "…" but not the new position.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Screen-reader settings you changed from the defaults (verbosity, punctuation, browse-mode options), anything that was confusing, and anything else worth knowing.

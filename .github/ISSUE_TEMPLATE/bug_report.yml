@@ -1,0 +1,138 @@
+name: Bug report
+description: Something in sorta11y does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more precisely you
+        describe the setup, the faster it can be reproduced.
+
+        - **Security vulnerability?** Do not file it here — report it
+          privately, see [SECURITY.md](https://github.com/Hensga/sorta11y/blob/main/SECURITY.md).
+        - **Ran the screen-reader test scenarios?** Use the
+          [AT test report](https://github.com/Hensga/sorta11y/issues/new?template=at_report.yml)
+          form instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: sorta11y version
+      description: Run `Sorta11y.version` in the browser console, or check your `package.json`.
+      placeholder: 0.1.0-alpha.0
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: e.g. Firefox 140, Chrome 139, Safari 26
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      placeholder: e.g. Windows 11, macOS 26, iOS 26, Android 16
+    validations:
+      required: true
+
+  - type: dropdown
+    id: input-method
+    attributes:
+      label: Input method
+      description: How were you operating the list? Select all that apply.
+      multiple: true
+      options:
+        - Keyboard
+        - Mouse
+        - Touch
+        - Pen
+        - Screen reader
+        - Other (describe in the steps)
+    validations:
+      required: true
+
+  - type: input
+    id: screen-reader
+    attributes:
+      label: Screen reader and version
+      description: Only if a screen reader was running.
+      placeholder: e.g. NVDA 2025.3, JAWS 2026, VoiceOver (macOS 26)
+
+  - type: dropdown
+    id: screen-reader-mode
+    attributes:
+      label: Screen-reader mode
+      description: Only if a screen reader was running. Which mode was it in when the problem happened?
+      options:
+        - Browse mode (virtual cursor)
+        - Focus mode (forms mode)
+        - Not applicable to this screen reader (e.g. VoiceOver)
+        - Not sure
+
+  - type: dropdown
+    id: grab-target
+    attributes:
+      label: Grab target
+      description: How is the list set up?
+      options:
+        - With a handle (the handle option)
+        - Without a handle (the whole item is the grab target)
+        - Built with Sorta11y.fromSelect()
+        - Not sure or not relevant
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options
+      description: The options you passed to `Sorta11y.create()` / `fromSelect()`, or the `data-*` attributes for `autoInit()`.
+      placeholder: |
+        { handle: ".drag-handle", clickToGrab: true }
+      render: js
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact keys, taps or clicks, in order.
+      placeholder: |
+        1. Tab to the second item's handle
+        2. Press Space
+        3. Press ArrowDown twice
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: For screen-reader problems, quote what was announced, as close to verbatim as you can. Console errors help too.
+    validations:
+      required: true
+
+  - type: input
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A link to a CodePen, JSFiddle, StackBlitz or public repository that shows the bug with as little code as possible. Strongly recommended.
+      placeholder: https://codepen.io/…
+
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched the [existing issues](https://github.com/Hensga/sorta11y/issues?q=is%3Aissue) and this has not been reported yet.
+          required: true

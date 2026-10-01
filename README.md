@@ -64,7 +64,9 @@ version and add Subresource Integrity — see
 [Installation](https://hensga.github.io/sorta11y/docs/installation/).
 
 Optional locale files live under `sorta11y/locales/*` — see
-[Internationalisation](#internationalisation).
+[Internationalisation](#internationalisation). TypeScript declarations are
+included — no `@types` package needed; see
+[Installation](https://hensga.github.io/sorta11y/docs/installation/#typescript).
 
 ## Quick start
 
@@ -320,12 +322,17 @@ The reasoning behind each of these lives in
 
 ## Contributing & feedback
 
-Bug reports and questions are welcome on the
-[issue tracker](https://github.com/Hensga/sorta11y/issues). The most valuable
-contribution right now is **real screen-reader testing**: if you can run one
-of the pending combinations in the [AT test matrix](./docs/at-test-matrix.md)
-(NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari), please report your
-findings — with scenario numbers and AT/browser versions.
+The most valuable contribution right now is **real screen-reader testing**: if
+you can run one of the pending combinations in the
+[AT test matrix](./docs/at-test-matrix.md) (NVDA + Firefox, JAWS + Chrome,
+VoiceOver + Safari), please file an
+[AT test report](https://github.com/Hensga/sorta11y/issues/new?template=at_report.yml)
+— it asks for the scenario results and your AT and browser versions.
+
+Questions, bug reports and feature ideas are welcome on the
+[issue tracker](https://github.com/Hensga/sorta11y/issues/new/choose); for code
+contributions, see [CONTRIBUTING.md](./CONTRIBUTING.md). Everyone taking part
+follows the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 Please report security vulnerabilities privately, not in public issues — see
 [SECURITY.md](./SECURITY.md).
@@ -339,7 +346,7 @@ npm install        # dev tooling only — the shipped library has zero runtime d
 npm test           # Vitest + jsdom
 npm run coverage   # enforce the >= 80% target
 npm run format     # Prettier over the repo, docs site included
-npm run demo       # quick serve → http://localhost:8090/demo/
+npm run demo       # quick serve → http://localhost:8090/site/
 ```
 
 The documentation site lives in `website/` as its own npm project (Astro needs
@@ -354,7 +361,7 @@ npm run preview                 # full Pages layout  → http://localhost:8090/s
 
 `npm run demo` serves the repository root, where the `docs/` folder is a
 directory of Markdown files — so the landing page's `docs` link only resolves
-under `npm run preview`, which reproduces the deployed layout (landing, demo and
+under `npm run preview`, which reproduces the deployed layout (landing page and
 the built docs at the paths they actually get). Both use port 8090, so run one at
 a time. `scripts/assemble-pages.sh` builds that layout and is shared with the
 Pages workflow, so the preview stays a real test of the deploy rather than an

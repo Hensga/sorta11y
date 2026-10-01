@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest a new option, method or behaviour.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        sorta11y does one thing: a single vertical list anyone can reorder,
+        including keyboard and screen-reader users. Nested lists, transfer
+        between lists and grid or horizontal reordering are
+        [out of scope](https://hensga.github.io/sorta11y/docs/reference/limitations/#out-of-scope).
+        The [known limitations](https://hensga.github.io/sorta11y/docs/reference/limitations/)
+        may already cover what you have in mind.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How could sorta11y solve it? An API sketch or example markup helps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Workarounds or other approaches you have considered.
+
+  - type: textarea
+    id: accessibility
+    attributes:
+      label: Accessibility considerations
+      description: How would this work for keyboard and screen-reader users? What should be announced, where should focus go, and does it affect touch or other single-pointer input?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched the [existing issues](https://github.com/Hensga/sorta11y/issues?q=is%3Aissue) and this has not been suggested yet.
+          required: true

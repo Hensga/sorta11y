@@ -1,0 +1,28 @@
+name: Question
+description: Ask how to use sorta11y, or whether it fits your case.
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The [documentation](https://hensga.github.io/sorta11y/docs/) answers
+        most questions; the [options](https://hensga.github.io/sorta11y/docs/reference/options/)
+        and [methods](https://hensga.github.io/sorta11y/docs/reference/methods/)
+        references are a good place to start. If something doesn't work as
+        documented, please use the bug report form instead.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you want to do, and what have you tried so far?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Optional — a code snippet, or a link to a minimal example (CodePen, StackBlitz …).
+    validations:
+      required: false

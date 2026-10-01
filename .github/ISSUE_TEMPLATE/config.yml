@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://hensga.github.io/sorta11y/docs/
+    about: Installation, guides and the full API reference.
+  - name: Report a security vulnerability
+    url: https://github.com/Hensga/sorta11y/security/advisories/new
+    about: Please report security issues privately, never in a public issue.
