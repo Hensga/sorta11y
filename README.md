@@ -14,6 +14,8 @@ announces every change through an ARIA live region. It progressively enhances a
 server-rendered `<ul><li>` list, so it degrades gracefully and coexists with
 existing pages.
 
+[![Keyboard demo: Tab focuses a drag handle, Space picks up "Draft release notes", the down arrow moves it twice, and Space drops it at position 3 of 5. Each step is announced through the ARIA live region, mirrored in the black panel on the right.](https://hensga.github.io/sorta11y/site/media/keyboard-demo.gif)](https://hensga.github.io/sorta11y/site/#play)
+
 **[Documentation →](https://hensga.github.io/sorta11y/docs/)** — installation,
 guides and the full API reference.
 
