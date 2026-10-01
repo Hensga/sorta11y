@@ -1,0 +1,15 @@
+{
+  // Shared settings for the type tests: a strict consumer, so the
+  // declarations also hold under the opt-in strictness flags.
+  "compilerOptions": {
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": false,
+    "noEmit": true,
+    "lib": ["es2017", "dom"],
+    "types": [],
+    "resolveJsonModule": true,
+    "noUncheckedSideEffectImports": true
+  }
+}

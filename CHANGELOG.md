@@ -4,6 +4,29 @@ All notable changes to **sorta11y** are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project aims for
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **TypeScript declarations** ship with the package (`src/sorta11y.d.ts`,
+  wired up through `types` and the `exports` map), so TypeScript no longer
+  reports "Could not find a declaration file for module 'sorta11y'". They cover
+  `require("sorta11y")`, `import Sorta11y from "sorta11y"` and the `<script>`
+  global, as well as the locale files (`sorta11y/locales/de`, `…/en`) and the
+  `sorta11y/style.css` side-effect import. Options, the callback event
+  (`source: "keyboard" | "pointer"`), labels and `fromSelect()` options are
+  typed on the `Sorta11y` namespace. Type tests run in CI.
+
+### Fixed
+
+- Named imports work under Node's native ESM loader:
+  `import { create } from "sorta11y"` (and the named label exports of the
+  locale files) used to throw "Named export … not found", because Node cannot
+  see through the UMD factory call. Bundlers were not affected.
+- `sorta11y/package.json` is resolvable: the `exports` map now exposes it, so
+  `require("sorta11y/package.json")` no longer throws
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+
 ## [0.1.0-alpha.0] - 2026-10-01
 
 First public alpha.
@@ -83,4 +106,5 @@ First public alpha.
 More in
 [Known limitations](https://hensga.github.io/sorta11y/docs/reference/limitations/).
 
+[Unreleased]: https://github.com/Hensga/sorta11y/compare/v0.1.0-alpha.0...HEAD
 [0.1.0-alpha.0]: https://github.com/Hensga/sorta11y/releases/tag/v0.1.0-alpha.0

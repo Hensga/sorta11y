@@ -64,7 +64,7 @@ const evt = {
   item, // HTMLElement — the item that moved
   oldIndex, // number — 0-indexed position before
   newIndex, // number — 0-indexed position after (-1: removed, see below)
-  order, // string[] — the full order of data-ids afterwards
+  order, // (string | null)[] — the data-ids afterwards (null: no id)
   source, // "keyboard" | "pointer"
 };
 ```

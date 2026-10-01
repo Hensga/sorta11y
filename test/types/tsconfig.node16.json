@@ -1,0 +1,6 @@
+{
+  // Node 16+ resolution: .cts is a CommonJS consumer, .mts an ES module one.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "module": "node16" },
+  "files": ["api.ts", "require.cts", "import.mts"]
+}

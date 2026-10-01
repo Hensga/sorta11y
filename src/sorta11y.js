@@ -18,6 +18,20 @@
   "use strict";
   if (typeof module === "object" && typeof module.exports === "object") {
     module.exports = factory();
+    // Never runs: spells the exports out for Node's ESM loader, whose static
+    // analysis can't see through the factory call — so named imports work
+    // there as they do in bundlers.
+    0 &&
+      (module.exports = {
+        version,
+        locales,
+        setDefaultLabels,
+        create,
+        get,
+        autoInit,
+        mirrorToSelect,
+        fromSelect,
+      });
   } else {
     root.Sorta11y = factory();
   }

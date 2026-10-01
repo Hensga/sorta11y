@@ -25,6 +25,27 @@ The package exposes three entry points:
 | `sorta11y/style.css` | Structural and state CSS hooks                                    |
 | `sorta11y/locales/*` | Optional locale files (`de`, `en`) — see [i18n](./guides/i18n.md) |
 
+### TypeScript
+
+TypeScript declarations ship with the package — there is no `@types/sorta11y`
+to install. They cover `require("sorta11y")`, `import Sorta11y from "sorta11y"`
+and, on a page that loads the `<script>`, the global `Sorta11y`, as well as the
+locale files and the stylesheet import. The option, event and label types live
+on the `Sorta11y` namespace:
+
+```ts
+import Sorta11y from "sorta11y";
+
+const options: Sorta11y.Options = {
+  handle: ".drag-handle",
+  onChange: (evt: Sorta11y.SortEvent) => save(evt.order),
+};
+const list: Sorta11y = Sorta11y.create("#tasks", options);
+```
+
+Named imports work as well — `import { create } from "sorta11y"` — in bundlers
+and in Node's native ESM loader alike.
+
 ## CDN — no build step
 
 The file is a UMD bundle, so a plain `<script>` tag works and puts `Sorta11y` on

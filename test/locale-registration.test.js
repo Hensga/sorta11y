@@ -39,6 +39,24 @@ describe("sorta11y — locale self-registration outside the browser", () => {
     expect(out).toBe("true");
   });
 
+  // The UMD files assign `module.exports = factory()`, which Node's ESM loader
+  // cannot see through — named imports (which the TypeScript declarations
+  // allow) need the exports spelled out for its static analysis.
+  it("supports named imports under Node ESM (library and locales)", () => {
+    const out = run(
+      ["--input-type=module"],
+      `import { create, get, autoInit, fromSelect, mirrorToSelect,
+         setDefaultLabels, locales, version } from "sorta11y";
+       import { grabbed, applicationLabel } from "sorta11y/locales/de";
+       import { dropped } from "sorta11y/locales/en";
+       console.log([create, get, autoInit, fromSelect, mirrorToSelect,
+         setDefaultLabels, grabbed, dropped].every((f) => typeof f === "function")
+         && typeof locales === "object" && typeof version === "string"
+         && applicationLabel === "Sortierbare Liste");`,
+    );
+    expect(out).toBe("true");
+  });
+
   it("registers regardless of import order", () => {
     const out = run(
       ["--input-type=module"],

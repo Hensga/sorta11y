@@ -16,6 +16,18 @@
   /* v8 ignore start -- environment registration (browser global / CommonJS) */
   if (typeof module === "object" && typeof module.exports === "object") {
     module.exports = labels;
+    // Never runs: spells the exports out for Node's ESM loader, whose static
+    // analysis can't see through factory() — so named imports work
+    // there as they do in bundlers.
+    0 &&
+      (module.exports = {
+        applicationLabel,
+        instructions,
+        grabbed,
+        moved,
+        dropped,
+        cancelled,
+      });
     // There is no window.Sorta11y here, so register on the library module
     // itself; module caches make it the same instance the app imported. No
     // try/catch on purpose: bundlers leave a require() inside one unconverted,

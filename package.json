@@ -26,14 +26,25 @@
     "url": "https://github.com/Hensga/sorta11y/issues"
   },
   "main": "src/sorta11y.js",
+  "types": "src/sorta11y.d.ts",
   "browser": "src/sorta11y.js",
   "unpkg": "src/sorta11y.js",
   "jsdelivr": "src/sorta11y.js",
   "style": "src/sorta11y.css",
   "exports": {
-    ".": "./src/sorta11y.js",
-    "./locales/*": "./src/locales/*.js",
-    "./style.css": "./src/sorta11y.css"
+    ".": {
+      "types": "./src/sorta11y.d.ts",
+      "default": "./src/sorta11y.js"
+    },
+    "./locales/*": {
+      "types": "./src/locales/*.d.ts",
+      "default": "./src/locales/*.js"
+    },
+    "./style.css": {
+      "types": "./src/sorta11y.css.d.ts",
+      "default": "./src/sorta11y.css"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "src/",
@@ -49,10 +60,11 @@
     "tag": "alpha"
   },
   "scripts": {
-    "prepublishOnly": "npm run coverage && npm run format:check",
+    "prepublishOnly": "npm run coverage && npm run test:types && npm run format:check",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
+    "test:types": "tsc -p test/types/tsconfig.node16.json && tsc -p test/types/tsconfig.nodenext.json && tsc -p test/types/tsconfig.bundler.json",
     "demo": "python3 -m http.server 8090",
     "preview": "npm --prefix website run build && sh scripts/assemble-pages.sh _preview/sorta11y && python3 -m http.server 8090 --directory _preview",
     "format": "prettier --write .",
@@ -63,6 +75,7 @@
     "axe-core": "^4.13.0",
     "jsdom": "^30.1.1",
     "prettier": "3.9.9",
+    "typescript": "^7.0.2",
     "vitest": "^5.0.2"
   },
   "engines": {

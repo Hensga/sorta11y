@@ -1,0 +1,7 @@
+{
+  // The usual bundler (Vite, esbuild, webpack) setup. global.ts runs here:
+  // under node16/nodenext every .ts file is a module, never a script.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "module": "esnext", "moduleResolution": "bundler" },
+  "files": ["api.ts", "import.mts", "global.ts"]
+}
