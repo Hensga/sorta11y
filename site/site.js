@@ -1,7 +1,7 @@
 /* ============================================================================
    sorta11y landing site — demo wiring.
    Each Playground block is a real Sorta11y.create()/.fromSelect() instance.
-   Toggles rebuild the instance (matching demo/index.html's proven pattern);
+   Toggles rebuild the instance (destroy, then create with the new options);
    the black code panel is derived state, rendered from the current options.
    The visible "▸ spoken:" line and the black [sr] log panel both mirror the
    instance's ARIA live region for sighted users — the region itself still

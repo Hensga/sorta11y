@@ -30,5 +30,5 @@ the advisory is published and credits you, unless you prefer not to be named.
 sorta11y is a client-side DOM library with no runtime dependencies. Relevant
 reports include, for example, markup or script injection through item text,
 labels or locale strings, and anything that lets one list instance affect the
-page beyond its own element. The documentation site and the demo pages in this
-repository are in scope as well.
+page beyond its own element. The documentation site and the landing page in
+this repository are in scope as well.

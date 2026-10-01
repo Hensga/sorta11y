@@ -7,7 +7,7 @@
 #
 #   <out>/index.html  redirect stub
 #   <out>/site/       landing page   — loads the library via ../src/
-#   <out>/demo/       demo           — likewise
+#   <out>/demo/       redirect       — the old demo now lives in the site's playground
 #   <out>/src/        library source — hence all three side by side
 #   <out>/docs/       Astro build of website/
 #

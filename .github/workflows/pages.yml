@@ -39,7 +39,7 @@ jobs:
         # must match where the artifact mounts it below.
         run: npm ci && npm run build
         working-directory: website
-      - name: Assemble Pages artifact (site + demo + docs + library source)
+      - name: Assemble Pages artifact (site + docs + library source)
         # Same script `npm run preview` uses locally, so the preview is a real
         # test of this layout rather than an approximation of it.
         run: sh scripts/assemble-pages.sh _pages

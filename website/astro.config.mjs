@@ -5,8 +5,8 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import { unified } from "@astrojs/markdown-remark";
 
-// The Pages artifact puts the landing page at /sorta11y/site/, the demo at
-// /sorta11y/demo/ and this docs build at /sorta11y/docs/. `base` has to match
+// The Pages artifact puts the landing page (with the playground) at
+// /sorta11y/site/ and this docs build at /sorta11y/docs/. `base` has to match
 // that mount point or every generated link 404s on GitHub Pages.
 const SITE = "https://hensga.github.io";
 const BASE = "/sorta11y/docs";
@@ -85,7 +85,7 @@ export default defineConfig({
       ],
       editLink: { baseUrl: `${REPO}/edit/main/website/` },
       customCss: ["./src/styles/theme.css"],
-      // The landing page and the demo live outside this Astro build. Starlight
+      // The landing page lives outside this Astro build. Starlight
       // prefixes `base` onto every sidebar `link`, so a root-relative path here
       // would become /sorta11y/docs/sorta11y/site/ — full URLs it leaves alone.
       sidebar: [
@@ -121,7 +121,7 @@ export default defineConfig({
           label: "Elsewhere",
           items: [
             {
-              label: "Live demo & playground",
+              label: "Playground",
               link: `${SITE}/sorta11y/site/`,
             },
             { label: "Changelog", link: `${REPO}/blob/main/CHANGELOG.md` },
